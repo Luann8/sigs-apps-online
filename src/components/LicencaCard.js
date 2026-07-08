@@ -1,81 +1,99 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Colors, BorderRadius, Spacing, Typography } from '../theme/colors';
+import { Colors, BorderRadius, Spacing, Typography, Shadows } from '../theme/colors';
 import { formatDate, getStatusConfig, getTipoConfig, getDaysUntilExpiry } from '../utils/formatters';
 
 export function LicencaCard({ licenca, onPress }) {
   const statusConfig = getStatusConfig(licenca.status);
   const tipoConfig = getTipoConfig(licenca.tipo);
   const daysLeft = getDaysUntilExpiry(licenca.dataVencimento);
-  const expiringSoon = daysLeft <= 30 && daysLeft > 0;
+  const isExpiringSoon = daysLeft <= 30 && daysLeft > 0;
+  const isExpired = daysLeft <= 0;
 
-  const statusIcon =
-    licenca.status === 'ativa'
-      ? 'check-circle'
-      : licenca.status === 'pendente'
-      ? 'clock-outline'
-      : licenca.status === 'vencida'
-      ? 'alert-circle'
-      : 'minus-circle';
+  const urgencyColor = isExpired
+    ? Colors.error
+    : isExpiringSoon
+    ? Colors.warning
+    : Colors.divider;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {expiringSoon && (
-        <View style={styles.expiryBanner}>
-          <MaterialCommunityIcons name="alert" size={12} color={Colors.warning} />
-          <Text style={styles.expiryText}>Vence em {daysLeft} dias</Text>
-        </View>
-      )}
-
+    <TouchableOpacity
+      style={[styles.card, Shadows.sm, { borderLeftColor: urgencyColor }]}
+      onPress={onPress}
+      activeOpacity={0.72}
+    >
+      {/* Header row */}
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
+        <View style={[styles.iconWrap, { backgroundColor: tipoConfig.bg }]}>
           <MaterialCommunityIcons
             name={licenca.tipo === 'veterinaria' ? 'paw' : 'medical-bag'}
-            size={22}
+            size={20}
             color={tipoConfig.color}
           />
         </View>
-        <View style={styles.titleContainer}>
-          <Text style={styles.nome} numberOfLines={1}>
-            {licenca.nome}
-          </Text>
-          <Text style={styles.endereco} numberOfLines={1}>
-            {licenca.endereco}
+
+        <View style={styles.titleBlock}>
+          <Text style={styles.nome} numberOfLines={1}>{licenca.nome}</Text>
+          <Text style={styles.endereco} numberOfLines={1}>{licenca.endereco}</Text>
+        </View>
+
+        <View style={[styles.statusPill, { backgroundColor: statusConfig.bg }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+          <Text style={[styles.statusLabel, { color: statusConfig.color }]}>
+            {statusConfig.label}
           </Text>
         </View>
-        <MaterialCommunityIcons
-          name={statusIcon}
-          size={24}
-          color={statusConfig.color}
-        />
       </View>
 
+      {/* Footer row */}
       <View style={styles.footer}>
-        <View style={styles.badges}>
-          <View style={[styles.badge, { backgroundColor: tipoConfig.bg }]}>
-            <Text style={[styles.badgeText, { color: tipoConfig.color }]}>
+        <View style={styles.metaLeft}>
+          <View style={styles.metaItem}>
+            <MaterialCommunityIcons name="tag-outline" size={12} color={Colors.textTertiary} />
+            <Text style={styles.metaText}>{licenca.codigo}</Text>
+          </View>
+          <View style={styles.metaDot} />
+          <View style={styles.metaItem}>
+            <MaterialCommunityIcons
+              name={licenca.tipo === 'veterinaria' ? 'paw' : 'medical-bag'}
+              size={12}
+              color={tipoConfig.color}
+            />
+            <Text style={[styles.metaText, { color: tipoConfig.color }]}>
               {tipoConfig.label}
             </Text>
           </View>
-          <View style={[styles.badge, { backgroundColor: statusConfig.bg }]}>
-            <Text style={[styles.badgeText, { color: statusConfig.color }]}>
-              {statusConfig.label}
-            </Text>
-          </View>
         </View>
 
-        <View style={styles.meta}>
-          <MaterialCommunityIcons name="calendar-outline" size={13} color={Colors.textSecondary} />
-          <Text style={styles.metaText}>{formatDate(licenca.dataVencimento)}</Text>
+        <View style={[
+          styles.expiryChip,
+          isExpired
+            ? styles.expiryChipError
+            : isExpiringSoon
+            ? styles.expiryChipWarn
+            : styles.expiryChipNormal,
+        ]}>
+          <MaterialCommunityIcons
+            name={isExpired ? 'alert-circle' : 'calendar-clock'}
+            size={12}
+            color={isExpired ? Colors.error : isExpiringSoon ? Colors.warning : Colors.textTertiary}
+          />
+          <Text style={[
+            styles.expiryText,
+            isExpired
+              ? { color: Colors.error }
+              : isExpiringSoon
+              ? { color: Colors.warning }
+              : { color: Colors.textTertiary },
+          ]}>
+            {isExpired
+              ? `Vencida há ${Math.abs(daysLeft)}d`
+              : isExpiringSoon
+              ? `Vence em ${daysLeft}d`
+              : formatDate(licenca.dataVencimento)}
+          </Text>
         </View>
-      </View>
-
-      <View style={styles.codigoRow}>
-        <Text style={styles.codigo}>Código: {licenca.codigo}</Text>
-        {licenca.crmv && (
-          <Text style={styles.crmv}>{licenca.crmv}</Text>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -87,47 +105,24 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  expiryBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.warningBg,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.sm,
-    alignSelf: 'flex-start',
-  },
-  expiryText: {
-    ...Typography.caption,
-    color: Colors.warning,
-    fontWeight: '600',
+    borderLeftWidth: 4,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
-  iconContainer: {
+  iconWrap: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.surfaceVariant,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
+    flexShrink: 0,
   },
-  titleContainer: {
+  titleBlock: {
     flex: 1,
-    marginRight: Spacing.sm,
   },
   nome: {
     ...Typography.h4,
@@ -136,52 +131,74 @@ const styles = StyleSheet.create({
   },
   endereco: {
     ...Typography.caption,
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    flexShrink: 0,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusLabel: {
+    ...Typography.label,
+    fontSize: 11,
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.xs,
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-  },
-  badgeText: {
-    ...Typography.label,
-    fontSize: 11,
-  },
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-  },
-  codigoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-    paddingTop: Spacing.xs,
+    paddingTop: Spacing.sm,
     borderTopWidth: 1,
     borderTopColor: Colors.divider,
   },
-  codigo: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
+  metaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
   },
-  crmv: {
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.textDisabled,
+  },
+  metaText: {
     ...Typography.caption,
-    color: Colors.primary,
+    color: Colors.textTertiary,
+    fontWeight: '500',
+  },
+  expiryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  expiryChipNormal: {
+    backgroundColor: Colors.surfaceVariant,
+  },
+  expiryChipWarn: {
+    backgroundColor: Colors.warningBg,
+  },
+  expiryChipError: {
+    backgroundColor: Colors.errorBg,
+  },
+  expiryText: {
+    ...Typography.caption,
     fontWeight: '600',
   },
 });

@@ -1,17 +1,28 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Colors, BorderRadius, Spacing, Typography } from '../theme/colors';
+import { Colors, BorderRadius, Spacing, Typography, Shadows } from '../theme/colors';
 
-export function KpiCard({ label, value, icon, color, bgColor, subtitle }) {
+export function KpiCard({ label, value, icon, color, bgColor, subtitle, trend }) {
   return (
-    <View style={[styles.card, { borderLeftColor: color }]}>
-      <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
-        <MaterialCommunityIcons name={icon} size={22} color={color} />
+    <View style={[styles.card, Shadows.sm]}>
+      <View style={styles.top}>
+        <View style={[styles.iconWrap, { backgroundColor: bgColor }]}>
+          <MaterialCommunityIcons name={icon} size={20} color={color} />
+        </View>
+        {trend !== undefined && (
+          <View style={[styles.trend, { backgroundColor: trend >= 0 ? Colors.successBg : Colors.errorBg }]}>
+            <MaterialCommunityIcons
+              name={trend >= 0 ? 'trending-up' : 'trending-down'}
+              size={12}
+              color={trend >= 0 ? Colors.success : Colors.error}
+            />
+          </View>
+        )}
       </View>
       <Text style={[styles.value, { color }]}>{value}</Text>
-      <Text style={styles.label}>{label}</Text>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      <Text style={styles.label} numberOfLines={1}>{label}</Text>
+      {subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
     </View>
   );
 }
@@ -22,38 +33,42 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
-    alignItems: 'center',
-    borderLeftWidth: 3,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 2,
     minWidth: 80,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
+  top: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  iconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: BorderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xs,
+  },
+  trend: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   value: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     marginBottom: 2,
+    letterSpacing: -0.5,
   },
   label: {
-    ...Typography.caption,
+    ...Typography.label,
     color: Colors.textSecondary,
-    textAlign: 'center',
-    fontWeight: '500',
+    marginTop: 1,
   },
   subtitle: {
     ...Typography.caption,
     color: Colors.textDisabled,
-    textAlign: 'center',
     marginTop: 2,
   },
 });

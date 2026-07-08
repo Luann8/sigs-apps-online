@@ -18,7 +18,9 @@ export const initDatabase = () => {
       tipo TEXT NOT NULL,
       status TEXT NOT NULL,
       dataEmissao TEXT NOT NULL,
-      dataVencimento TEXT NOT NULL
+      dataVencimento TEXT NOT NULL,
+      anexoUri TEXT,
+      custo REAL
     );
 
     CREATE TABLE IF NOT EXISTS inspecoes (
@@ -31,6 +33,19 @@ export const initDatabase = () => {
       FOREIGN KEY (licencaId) REFERENCES licencas (id) ON DELETE CASCADE
     );
   `);
+
+  // Add column if it doesn't exist (for existing databases)
+  try {
+    db.execSync('ALTER TABLE licencas ADD COLUMN anexoUri TEXT;');
+  } catch (e) {
+    // Column probably already exists, ignore
+  }
+
+  try {
+    db.execSync('ALTER TABLE licencas ADD COLUMN custo REAL;');
+  } catch (e) {
+    // Column probably already exists, ignore
+  }
 };
 
 export const DatabaseService = {
@@ -47,12 +62,13 @@ export const DatabaseService = {
 
   addLicenca: (licenca) => {
     db.runSync(
-      `INSERT INTO licencas (id, codigo, nome, cnpj, endereco, telefone, email, responsavel, crmv, tipo, status, dataEmissao, dataVencimento)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO licencas (id, codigo, nome, cnpj, endereco, telefone, email, responsavel, crmv, tipo, status, dataEmissao, dataVencimento, anexoUri, custo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         licenca.id, licenca.codigo, licenca.nome, licenca.cnpj, licenca.endereco,
         licenca.telefone, licenca.email, licenca.responsavel, licenca.crmv || null,
-        licenca.tipo, licenca.status, licenca.dataEmissao, licenca.dataVencimento
+        licenca.tipo, licenca.status, licenca.dataEmissao, licenca.dataVencimento,
+        licenca.anexoUri || null, licenca.custo || null,
       ]
     );
   },

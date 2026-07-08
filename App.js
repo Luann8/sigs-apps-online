@@ -14,85 +14,115 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { LicencasScreen } from './src/screens/LicencasScreen';
 import { DetalheLicencaScreen } from './src/screens/DetalheLicencaScreen';
+import { CalendarioScreen } from './src/screens/CalendarioScreen';
 import { CadastroScreen } from './src/screens/CadastroScreen';
-import { Colors, BorderRadius, Spacing } from './src/theme/colors';
+import { EditarLicencaScreen } from './src/screens/EditarLicencaScreen';
+import { ConfiguracoesScreen } from './src/screens/ConfiguracoesScreen';
+import { AlertasScreen } from './src/screens/AlertasScreen';
+import Toast from 'react-native-toast-message';
+import { Colors, Shadows } from './src/theme/colors';
 import { useLicencasStore } from './src/store/licencasStore';
+import { requestPermissionsAsync, reagendarTodasAsNotificacoes } from './src/utils/notifications';
+import { getDaysUntilExpiry } from './src/utils/formatters';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function CadastroTabButton() {
   const navigation = useNavigation();
-
   return (
     <TouchableOpacity
-      style={styles.fabContainer}
+      style={styles.fabOuter}
       onPress={() => navigation.navigate('Cadastro')}
-      activeOpacity={0.9}
+      activeOpacity={0.88}
     >
       <LinearGradient
-        colors={[Colors.primary, Colors.primaryDark]}
+        colors={[Colors.primary, Colors.secondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.fabGradient}
       >
-        <MaterialCommunityIcons name="plus" size={32} color="#fff" />
+        <MaterialCommunityIcons name="plus" size={28} color="#fff" />
       </LinearGradient>
     </TouchableOpacity>
   );
 }
 
+function TabIcon({ name, focused, size = 24 }) {
+  return (
+    <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+      <MaterialCommunityIcons name={name} size={size} color={focused ? Colors.primary : Colors.tabBarInactive} />
+    </View>
+  );
+}
+
 function TabNavigator() {
   const insets = useSafeAreaInsets();
-  
+  const licencas = useLicencasStore((s) => s.licencas);
+
+  const alertCount = licencas.filter((l) => { 
+    const d = getDaysUntilExpiry(l.dataVencimento);
+    return d <= 7 || l.status === 'vencida';
+  }).length;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          height: 65 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-          paddingTop: 10,
+          backgroundColor: Colors.surface,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          paddingTop: 8,
           borderTopWidth: 1,
           borderTopColor: Colors.divider,
-          elevation: 20,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
-          position: 'relative',
+          ...Shadows.md,
         },
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textDisabled,
-        tabBarLabelStyle: styles.tabBarLabel,
-        tabBarIcon: ({ color, size, focused }) => {
+        tabBarInactiveTintColor: Colors.tabBarInactive,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarIcon: ({ focused }) => {
           const icons = {
             Inicio: focused ? 'view-dashboard' : 'view-dashboard-outline',
             Licencas: focused ? 'clipboard-text' : 'clipboard-text-outline',
-            Cadastro: 'plus',
+            Calendario: focused ? 'calendar-month' : 'calendar-month-outline',
+            Configuracoes: focused ? 'cog' : 'cog-outline',
           };
-          const iconName = icons[route.name] ?? 'circle';
-
-          if (route.name === 'Cadastro') return null;
-
-          return (
-            <View style={styles.iconContainer}>
-              <MaterialCommunityIcons 
-                name={iconName} 
-                size={route.name === 'Inicio' ? 28 : 26} 
-                color={color} 
-              />
-              {focused && <View style={styles.activeIndicator} />}
-            </View>
-          );
+          return <TabIcon name={icons[route.name] ?? 'circle'} focused={focused} />;
         },
-        tabBarButton: route.name === 'Cadastro'
-          ? (props) => <CadastroTabButton {...props} />
-          : undefined,
+        tabBarButton: route.name === 'Cadastro' ? (props) => <CadastroTabButton {...props} /> : undefined,
       })}
     >
-      <Tab.Screen name="Inicio" component={DashboardScreen} options={{ tabBarLabel: 'Início' }} />
-      <Tab.Screen name="Cadastro" component={CadastroScreen} options={{ tabBarLabel: '' }} />
-      <Tab.Screen name="Licencas" component={LicencasScreen} options={{ tabBarLabel: 'Licenças' }} />
+      <Tab.Screen
+        name="Inicio"
+        component={DashboardScreen}
+        options={{
+          tabBarLabel: 'Início',
+          tabBarBadge: alertCount > 0 ? alertCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: Colors.error, fontSize: 10 },
+        }}
+      />
+      <Tab.Screen
+        name="Calendario"
+        component={CalendarioScreen}
+        options={{ tabBarLabel: 'Calendário' }}
+      />
+      <Tab.Screen
+        name="Cadastro"
+        component={CadastroScreen}
+        options={{ tabBarLabel: '' }}
+      />
+      <Tab.Screen
+        name="Licencas"
+        component={LicencasScreen}
+        options={{ tabBarLabel: 'Licenças' }}
+      />
+      <Tab.Screen
+        name="Configuracoes"
+        component={ConfiguracoesScreen}
+        options={{ tabBarLabel: 'Opções' }}
+      />
     </Tab.Navigator>
   );
 }
@@ -102,6 +132,10 @@ export default function App() {
 
   React.useEffect(() => {
     loadLicencas();
+    requestPermissionsAsync().then(() => {
+      const licencas = useLicencasStore.getState().licencas;
+      reagendarTodasAsNotificacoes(licencas);
+    });
     if (Platform.OS === 'android') {
       NavigationBar.setBackgroundColorAsync('#FFFFFF');
       NavigationBar.setButtonStyleAsync('dark');
@@ -116,54 +150,54 @@ export default function App() {
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
             <Stack.Screen name="Tabs" component={TabNavigator} />
             <Stack.Screen name="DetalheLicenca" component={DetalheLicencaScreen} />
+            <Stack.Screen name="EditarLicenca" component={EditarLicencaScreen} />
+            <Stack.Screen name="Alertas" component={AlertasScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        <Toast />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBarLabel: {
+  tabLabel: {
     fontSize: 10,
     fontWeight: '700',
-    marginTop: 2,
+    letterSpacing: 0.2,
+    marginTop: 1,
   },
-  iconContainer: {
+  tabIconWrap: {
+    width: 36,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 40,
+    borderRadius: 8,
   },
-  activeIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-    marginTop: 3,
+  tabIconWrapActive: {
+    backgroundColor: Colors.primary + '14',
   },
-  fabContainer: {
+
+  // FAB
+  fabOuter: {
     position: 'absolute',
-    top: -28,
+    top: -22,
     left: '50%',
-    marginLeft: -29,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#fff',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    marginLeft: -28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.surface,
+    ...Shadows.lg,
     zIndex: 999,
   },
   fabGradient: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
+    borderWidth: 2.5,
+    borderColor: Colors.surface,
   },
 });

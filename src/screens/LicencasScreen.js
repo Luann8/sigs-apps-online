@@ -6,14 +6,16 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import * as Haptics from 'expo-haptics';
 import { useLicencasStore } from '../store/licencasStore';
 import { LicencaCard } from '../components/LicencaCard';
-import { Colors, Spacing, Typography, BorderRadius } from '../theme/colors';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../theme/colors';
 import { generateId, generateCodigo } from '../utils/formatters';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const TIPO_OPTIONS = [
   { key: 'todas', label: 'Todas', icon: 'layers-outline' },
@@ -22,12 +24,36 @@ const TIPO_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { key: 'todas', label: 'Todos' },
+  { key: 'todas', label: 'Todas' },
   { key: 'ativa', label: 'Ativas' },
   { key: 'pendente', label: 'Pendentes' },
   { key: 'vencida', label: 'Vencidas' },
   { key: 'suspensa', label: 'Suspensas' },
 ];
+
+function FilterChip({ option, selected, onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={() => {
+        Haptics.selectionAsync();
+        onPress(option.key);
+      }}
+      style={[styles.chip, selected && styles.chipActive]}
+      activeOpacity={0.75}
+    >
+      {option.icon && (
+        <MaterialCommunityIcons
+          name={option.icon}
+          size={14}
+          color={selected ? '#fff' : Colors.textSecondary}
+        />
+      )}
+      <Text style={[styles.chipLabel, selected && styles.chipLabelActive]}>
+        {option.label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 export function LicencasScreen({ navigation }) {
   const {
@@ -38,13 +64,13 @@ export function LicencasScreen({ navigation }) {
     filterStatus,
     searchQuery,
     loadLicencas,
-    licencas
+    licencas,
   } = useLicencasStore();
 
   const getFilteredLicencas = useLicencasStore((s) => s.getFilteredLicencas);
   const filtered = getFilteredLicencas();
-
   const [localSearch, setLocalSearch] = useState(searchQuery);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadLicencas();
@@ -57,110 +83,106 @@ export function LicencasScreen({ navigation }) {
 
   function handleGerarDadosTeste() {
     const { addLicenca } = useLicencasStore.getState();
+    const base = licencas?.length || 0;
     const l1 = {
-      id: generateId(), codigo: generateCodigo((licencas?.length || 0) + 1), nome: 'Clínica Vet Dogs', cnpj: '11222333000144', endereco: 'Rua das Flores, 123',
-      telefone: '(11) 99999-9999', email: 'contato@vetdogs.com', responsavel: 'Dr. João', crmv: '12345',
-      tipo: 'veterinaria', status: 'pendente', dataEmissao: new Date().toISOString().split('T')[0], dataVencimento: '2026-12-31', inspecoes: []
+      id: generateId(), codigo: generateCodigo(base + 1), nome: 'Clínica Vet Dogs',
+      cnpj: '11222333000144', endereco: 'Rua das Flores, 123', telefone: '(11) 99999-9999',
+      email: 'contato@vetdogs.com', responsavel: 'Dr. João', crmv: '12345',
+      tipo: 'veterinaria', status: 'pendente',
+      dataEmissao: new Date().toISOString().split('T')[0],
+      dataVencimento: '2026-12-31', inspecoes: [],
     };
     const l2 = {
-      id: generateId(), codigo: generateCodigo((licencas?.length || 0) + 2), nome: 'Supermercado Central', cnpj: '44555666000177', endereco: 'Av. Paulista, 1000',
-      telefone: '(11) 88888-8888', email: 'contato@central.com', responsavel: 'Maria Silva', crmv: undefined,
-      tipo: 'sanitaria', status: 'ativa', dataEmissao: new Date().toISOString().split('T')[0], dataVencimento: '2025-06-30', inspecoes: []
+      id: generateId(), codigo: generateCodigo(base + 2), nome: 'Supermercado Central',
+      cnpj: '44555666000177', endereco: 'Av. Paulista, 1000', telefone: '(11) 88888-8888',
+      email: 'contato@central.com', responsavel: 'Maria Silva',
+      tipo: 'sanitaria', status: 'ativa',
+      dataEmissao: new Date().toISOString().split('T')[0],
+      dataVencimento: '2025-06-30', inspecoes: [],
     };
     try {
       addLicenca(l1);
       addLicenca(l2);
-      Alert.alert('Sucesso', 'Dados de teste gerados com sucesso!');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Toast.show({ type: 'success', text1: 'Dados gerados', text2: 'Dados de teste criados.' });
     } catch (e) {
-      Alert.alert('Erro', 'Falha ao gerar dados: ' + e.message);
+      Toast.show({ type: 'error', text1: 'Erro', text2: e.message });
     }
   }
 
+  const activeFilters = (filterTipo !== 'todas' ? 1 : 0) + (filterStatus !== 'todas' ? 1 : 0);
+
   return (
     <View style={styles.container}>
-      {/* Header Padronizado */}
+      {/* Header */}
       <LinearGradient
         colors={[Colors.gradientStart, Colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Licenças</Text>
+            <Text style={styles.headerSubtitle}>
+              {filtered.length} {filtered.length === 1 ? 'registro' : 'registros'}
+              {activeFilters > 0 ? ` · ${activeFilters} filtro${activeFilters > 1 ? 's' : ''}` : ''}
+            </Text>
+          </View>
+        </View>
 
-
-
-        <Text style={styles.headerTitle}>Licenças</Text>
-        <Text style={styles.headerSubtitle}>Gerencie os registros sanitários</Text>
-
-        {/* Search Bar no Header */}
+        {/* Search */}
         <View style={styles.searchBar}>
-          <MaterialCommunityIcons name="magnify" size={20} color={Colors.textDisabled} />
+          <MaterialCommunityIcons name="magnify" size={20} color={Colors.textTertiary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar estabelecimento..."
+            placeholder="Buscar por nome ou código..."
             placeholderTextColor={Colors.textDisabled}
             value={localSearch}
             onChangeText={handleSearch}
+            returnKeyType="search"
           />
+          {localSearch.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialCommunityIcons name="close-circle" size={18} color={Colors.textDisabled} />
+            </TouchableOpacity>
+          )}
         </View>
       </LinearGradient>
 
-      {/* Filtros */}
-      <View style={styles.filterSection}>
+      {/* Filters */}
+      <View style={styles.filtersWrap}>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
           data={TIPO_OPTIONS}
-          keyExtractor={(item) => item.key}
+          keyExtractor={(item) => `tipo-${item.key}`}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => setFilterTipo(item.key)}
-              style={[
-                styles.filterChip,
-                filterTipo === item.key && styles.filterChipActive
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={item.icon}
-                size={16}
-                color={filterTipo === item.key ? '#fff' : Colors.textSecondary}
-              />
-              <Text style={[
-                styles.filterChipLabel,
-                filterTipo === item.key && styles.filterChipLabelActive
-              ]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
+            <FilterChip
+              option={item}
+              selected={filterTipo === item.key}
+              onPress={setFilterTipo}
+            />
           )}
-          contentContainerStyle={styles.filterList}
+          contentContainerStyle={styles.filterRow}
         />
-
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
           data={STATUS_OPTIONS}
-          keyExtractor={(item) => item.key}
+          keyExtractor={(item) => `status-${item.key}`}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => setFilterStatus(item.key)}
-              style={[
-                styles.statusChip,
-                filterStatus === item.key && styles.statusChipActive
-              ]}
-            >
-              <Text style={[
-                styles.statusChipLabel,
-                filterStatus === item.key && styles.statusChipLabelActive
-              ]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
+            <FilterChip
+              option={item}
+              selected={filterStatus === item.key}
+              onPress={setFilterStatus}
+            />
           )}
-          contentContainerStyle={[styles.filterList, { marginTop: 10 }]}
+          contentContainerStyle={[styles.filterRow, styles.filterRowSecond]}
         />
       </View>
 
-      {/* Listagem */}
+      {/* List */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -170,21 +192,29 @@ export function LicencasScreen({ navigation }) {
             onPress={() => navigation.navigate('DetalheLicenca', { id: item.id })}
           />
         )}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <MaterialCommunityIcons name="clipboard-text-off-outline" size={48} color={Colors.textDisabled} />
-            <Text style={styles.emptyText}>Nenhuma licença encontrada.</Text>
-            {(!licencas || licencas.length === 0) && (
-              <TouchableOpacity style={styles.gerarDadosBtn} onPress={handleGerarDadosTeste}>
-                <MaterialCommunityIcons name="database-plus" size={20} color="#fff" />
-                <Text style={styles.gerarDadosText}>Gerar Dados de Teste</Text>
-              </TouchableOpacity>
+            <View style={styles.emptyIconWrap}>
+              <MaterialCommunityIcons name="clipboard-text-off-outline" size={40} color={Colors.textDisabled} />
+            </View>
+            <Text style={styles.emptyTitle}>Nenhuma licença encontrada</Text>
+            {(!licencas || licencas.length === 0) ? (
+              <>
+                <Text style={styles.emptySubtitle}>
+                  Cadastre a primeira licença usando o botão "+" abaixo.
+                </Text>
+                <TouchableOpacity style={styles.gerarBtn} onPress={handleGerarDadosTeste}>
+                  <MaterialCommunityIcons name="database-plus" size={18} color="#fff" />
+                  <Text style={styles.gerarBtnText}>Gerar dados de teste</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.emptySubtitle}>
+                Tente ajustar os filtros ou a busca.
+              </Text>
             )}
-            <Text style={styles.emptySubtitle}>
-              Tente ajustar seus filtros de busca
-            </Text>
           </View>
         }
       />
@@ -194,43 +224,20 @@ export function LicencasScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+
   header: {
-    paddingTop: 52,
     paddingBottom: Spacing.md,
     paddingHorizontal: Spacing.md,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: Spacing.md,
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  logoCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  logoLetter: { color: '#fff', fontWeight: '800', fontSize: 18 },
-  appName: { color: '#fff', fontWeight: '800', fontSize: 16, letterSpacing: 0.5 },
-  appTagline: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '600' },
-  headerActionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  headerTitle: { ...Typography.h2, color: '#fff', letterSpacing: -0.5 },
-  headerSubtitle: { ...Typography.caption, color: 'rgba(255,255,255,0.75)', marginTop: 2, marginBottom: Spacing.md },
+  headerTitle: { ...Typography.h2, color: '#fff' },
+  headerSubtitle: { ...Typography.caption, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,96 +245,94 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     height: 46,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: Spacing.sm,
+    ...Shadows.sm,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
     ...Typography.body2,
     color: Colors.textPrimary,
+    paddingVertical: 0,
   },
-  filterSection: {
-    paddingVertical: Spacing.md,
+
+  filtersWrap: {
     backgroundColor: Colors.background,
+    paddingTop: Spacing.sm,
   },
-  filterList: {
+  filterRow: {
     paddingHorizontal: Spacing.md,
-    gap: 8,
+    gap: Spacing.xs,
   },
-  filterChip: {
+  filterRowSecond: {
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
+  },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1.5,
     borderColor: Colors.border,
-    gap: 6,
+    gap: 5,
   },
-  filterChipActive: {
+  chipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  filterChipLabel: {
+  chipLabel: {
     ...Typography.label,
     fontSize: 12,
     color: Colors.textSecondary,
   },
-  filterChipLabelActive: {
+  chipLabelActive: {
     color: '#fff',
   },
-  statusChip: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  statusChipActive: {
-    backgroundColor: Colors.secondary,
-    borderColor: Colors.secondary,
-  },
-  statusChipLabel: {
-    ...Typography.caption,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-  },
-  statusChipLabelActive: {
-    color: '#fff',
-  },
+
   listContent: {
     paddingHorizontal: Spacing.md,
-    paddingBottom: 120,
+    paddingTop: Spacing.sm,
   },
-  empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.sm },
+
+  empty: {
+    alignItems: 'center',
+    paddingTop: Spacing.xxl,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+  emptyTitle: {
+    ...Typography.h4,
+    color: Colors.textSecondary,
+  },
   emptySubtitle: {
     ...Typography.body2,
-    color: Colors.textDisabled,
-    marginTop: Spacing.xs,
+    color: Colors.textTertiary,
+    textAlign: 'center',
   },
-  emptyText: {
-    ...Typography.body1,
-    color: Colors.textDisabled,
-    marginTop: Spacing.md,
-  },
-  gerarDadosBtn: {
-    marginTop: Spacing.xl,
+  gerarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
   },
-  gerarDadosText: {
+  gerarBtnText: {
     ...Typography.button,
     color: '#fff',
-  }
+    fontSize: 13,
+  },
 });

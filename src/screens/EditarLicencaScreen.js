@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import Toast from 'react-native-toast-message';
 import * as Haptics from 'expo-haptics';
 import { useLicencasStore } from '../store/licencasStore';
 import { Colors, Spacing, Typography, BorderRadius } from '../theme/colors';
-import { generateId, generateCodigo } from '../utils/formatters';
 import { agendarNotificacaoVencimento } from '../utils/notifications';
 
 const TIPOS = [
@@ -29,25 +28,36 @@ const TIPOS = [
   { key: 'sanitaria', label: 'Sanitária', icon: 'medical-bag' },
 ];
 
-export function CadastroScreen({ navigation }) {
-  const { addLicenca, licencas } = useLicencasStore();
+export function EditarLicencaScreen({ route, navigation }) {
+  const { licencaId } = route.params;
+  const { getLicencaById, updateLicenca } = useLicencasStore();
+  const licenca = getLicencaById(licencaId);
 
-  const [nome, setNome] = useState('');
-  const [cnpj, setCnpj] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [email, setEmail] = useState('');
-  const [responsavel, setResponsavel] = useState('');
-  const [crmv, setCrmv] = useState('');
-  const [tipo, setTipo] = useState('veterinaria');
-  const [dataVencimento, setDataVencimento] = useState('');
-  const [custo, setCusto] = useState('');
+  const [nome, setNome] = useState(licenca?.nome || '');
+  const [cnpj, setCnpj] = useState(licenca?.cnpj || '');
+  const [endereco, setEndereco] = useState(licenca?.endereco || '');
+  const [telefone, setTelefone] = useState(licenca?.telefone === '—' ? '' : (licenca?.telefone || ''));
+  const [email, setEmail] = useState(licenca?.email === '—' ? '' : (licenca?.email || ''));
+  const [responsavel, setResponsavel] = useState(licenca?.responsavel || '');
+  const [crmv, setCrmv] = useState(licenca?.crmv || '');
+  const [tipo, setTipo] = useState(licenca?.tipo || 'veterinaria');
+  const [dataVencimento, setDataVencimento] = useState(licenca?.dataVencimento || '');
+  const [status, setStatus] = useState(licenca?.status || 'pendente');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState({});
-  const [anexoUri, setAnexoUri] = useState(null);
+  const [anexoUri, setAnexoUri] = useState(licenca?.anexoUri || null);
   
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraRef, setCameraRef] = useState(null);
+
+  if (!licenca) {
+    return (
+      <View style={styles.container}>
+        <Text>Licença não encontrada</Text>
+      </View>
+    );
+  }
   
   const onChangeDate = (event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -58,16 +68,6 @@ export function CadastroScreen({ navigation }) {
       setDataVencimento(`${year}-${month}-${day}`);
     }
   };
-
-  const formatCusto = (text) => {
-    // Remove tudo que não for dígito
-    const digits = text.replace(/\D/g, '');
-    if (!digits) { setCusto(''); return; }
-    const value = (parseInt(digits, 10) / 100).toFixed(2);
-    setCusto(value);
-  };
-  
-  const [endereco, setEndereco] = useState('');
 
   const abrirCamera = async () => {
     if (!permission?.granted) {
@@ -145,11 +145,7 @@ export function CadastroScreen({ navigation }) {
     if (!validate()) return;
 
     try {
-      const nextCode = licencas.length + 1;
-      
-      const novaLicenca = {
-        id: generateId(),
-        codigo: generateCodigo(nextCode),
+      const updates = {
         nome,
         cnpj,
         endereco,
@@ -158,50 +154,29 @@ export function CadastroScreen({ navigation }) {
         responsavel,
         crmv: tipo === 'veterinaria' ? crmv : undefined,
         tipo,
-        status: 'pendente',
-        dataEmissao: new Date().toISOString().split('T')[0],
+        status,
         dataVencimento,
         anexoUri,
-        custo: custo ? parseFloat(custo) : null,
-        inspecoes: [],
       };
     
-      addLicenca(novaLicenca);
-      agendarNotificacaoVencimento(novaLicenca);
+      updateLicenca(licencaId, updates);
+      agendarNotificacaoVencimento({ ...licenca, ...updates });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Toast.show({
         type: 'success',
-        text1: 'Licença Cadastrada',
-        text2: `"${nome}" cadastrada com o código ${novaLicenca.codigo}.`,
+        text1: 'Licença Atualizada',
+        text2: `A licença de "${nome}" foi atualizada com sucesso.`,
       });
-
-      resetForm();
-      navigation.navigate('Licencas');
+      navigation.goBack();
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Toast.show({
         type: 'error',
-        text1: 'Erro ao Salvar',
+        text1: 'Erro ao Atualizar',
         text2: error.message,
       });
     }
-  }
-
-  function resetForm() {
-    setNome('');
-    setCnpj('');
-    setEndereco('');
-    setTelefone('');
-    setEmail('');
-    setResponsavel('');
-    setCrmv('');
-    setResponsavel('');
-    setCrmv('');
-    setDataVencimento('');
-    setCusto('');
-    setAnexoUri(null);
-    setErrors({});
   }
 
   return (
@@ -219,8 +194,8 @@ export function CadastroScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
               <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Nova Licença</Text>
-            <Text style={styles.headerSubtitle}>Preencha os dados do estabelecimento</Text>
+            <Text style={styles.headerTitle}>Editar / Renovar</Text>
+            <Text style={styles.headerSubtitle}>Atualize os dados e a validade da licença</Text>
           </LinearGradient>
 
           <ScrollView 
@@ -250,6 +225,25 @@ export function CadastroScreen({ navigation }) {
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+            </View>
+
+            {/* Status selector (Renovar) */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Status</Text>
+              <View style={styles.tipoRow}>
+                <TouchableOpacity
+                  style={[styles.tipoCard, status === 'pendente' && styles.statusPendenteSelected]}
+                  onPress={() => setStatus('pendente')}
+                >
+                  <Text style={[styles.tipoLabel, status === 'pendente' && { color: Colors.warning }]}>Pendente (Renovação)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tipoCard, status === 'ativa' && styles.statusAtivaSelected]}
+                  onPress={() => setStatus('ativa')}
+                >
+                  <Text style={[styles.tipoLabel, status === 'ativa' && { color: Colors.success }]}>Ativa</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -284,7 +278,6 @@ export function CadastroScreen({ navigation }) {
                 error={errors.endereco}
                 required
               />
-
               <FormField
                 label="Telefone"
                 value={telefone}
@@ -328,17 +321,9 @@ export function CadastroScreen({ navigation }) {
               )}
             </View>
 
-            {/* Custo + Validade */}
+            {/* Validity */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Custo e Validade</Text>
-              <FormField
-                label="Custo da Licença (R$)"
-                value={custo ? `R$ ${custo}` : ''}
-                onChangeText={formatCusto}
-                placeholder="R$ 0,00"
-                icon="currency-brl"
-                keyboardType="numeric"
-              />
+              <Text style={styles.sectionTitle}>Nova Validade</Text>
               <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.8}>
                 <View pointerEvents="none">
                   <FormField
@@ -357,14 +342,13 @@ export function CadastroScreen({ navigation }) {
                   mode="date"
                   display="default"
                   onChange={onChangeDate}
-                  minimumDate={new Date()}
                 />
               )}
             </View>
 
             {/* Anexo */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Documento / Licença</Text>
+              <Text style={styles.sectionTitle}>Novo Documento (Opcional)</Text>
               {anexoUri ? (
                 <View style={styles.anexoContainer}>
                   <Image source={{ uri: anexoUri }} style={styles.anexoPreview} />
@@ -388,8 +372,8 @@ export function CadastroScreen({ navigation }) {
                 end={{ x: 1, y: 0 }}
                 style={styles.submitGradient}
               >
-                <MaterialCommunityIcons name="content-save-outline" size={24} color="#fff" />
-                <Text style={styles.submitText}>Cadastrar Licença</Text>
+                <MaterialCommunityIcons name="content-save-edit-outline" size={24} color="#fff" />
+                <Text style={styles.submitText}>Salvar Alterações</Text>
               </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
@@ -549,6 +533,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+  },
+  statusPendenteSelected: {
+    borderColor: Colors.warning, 
+    backgroundColor: Colors.warning + '10',
+  },
+  statusAtivaSelected: {
+    borderColor: Colors.success, 
+    backgroundColor: Colors.successBg,
   },
   tipoLabel: { ...Typography.button, color: Colors.textSecondary },
   tipoLabelSelected: { color: Colors.primary },
