@@ -2,11 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, BorderRadius, Spacing, Typography, Shadows } from '../theme/colors';
-import { formatDate, getStatusConfig, getTipoConfig, getDaysUntilExpiry } from '../utils/formatters';
+import { formatDate, getStatusConfig, getTipoLicencaConfig, getDaysUntilExpiry } from '../utils/formatters';
 
 export function LicencaCard({ licenca, onPress }) {
   const statusConfig = getStatusConfig(licenca.status);
-  const tipoConfig = getTipoConfig(licenca.tipo);
+  const tipoConfig = getTipoLicencaConfig(licenca.tipoLicenca);
   const daysLeft = getDaysUntilExpiry(licenca.dataVencimento);
   const isExpiringSoon = daysLeft <= 30 && daysLeft > 0;
   const isExpired = daysLeft <= 0;
@@ -25,17 +25,17 @@ export function LicencaCard({ licenca, onPress }) {
     >
       {/* Header row */}
       <View style={styles.header}>
-        <View style={[styles.iconWrap, { backgroundColor: tipoConfig.bg }]}>
+        <View style={[styles.iconWrap, { backgroundColor: Colors.primary + '12' }]}>
           <MaterialCommunityIcons
-            name={licenca.tipo === 'veterinaria' ? 'paw' : 'medical-bag'}
+            name={tipoConfig.icon || 'file-document-outline'}
             size={20}
-            color={tipoConfig.color}
+            color={Colors.primary}
           />
         </View>
 
         <View style={styles.titleBlock}>
-          <Text style={styles.nome} numberOfLines={1}>{licenca.nome}</Text>
-          <Text style={styles.endereco} numberOfLines={1}>{licenca.endereco}</Text>
+          <Text style={styles.nome} numberOfLines={2}>{tipoConfig.label}</Text>
+          <Text style={styles.codigo}>{licenca.codigo}</Text>
         </View>
 
         <View style={[styles.statusPill, { backgroundColor: statusConfig.bg }]}>
@@ -52,17 +52,6 @@ export function LicencaCard({ licenca, onPress }) {
           <View style={styles.metaItem}>
             <MaterialCommunityIcons name="tag-outline" size={12} color={Colors.textTertiary} />
             <Text style={styles.metaText}>{licenca.codigo}</Text>
-          </View>
-          <View style={styles.metaDot} />
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons
-              name={licenca.tipo === 'veterinaria' ? 'paw' : 'medical-bag'}
-              size={12}
-              color={tipoConfig.color}
-            />
-            <Text style={[styles.metaText, { color: tipoConfig.color }]}>
-              {tipoConfig.label}
-            </Text>
           </View>
         </View>
 
@@ -109,7 +98,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
@@ -125,11 +114,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   nome: {
-    ...Typography.h4,
+    ...Typography.body2,
+    fontWeight: '700',
     color: Colors.textPrimary,
     marginBottom: 2,
+    lineHeight: 18,
   },
-  endereco: {
+  codigo: {
     ...Typography.caption,
     color: Colors.textTertiary,
   },
@@ -168,12 +159,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: Colors.textDisabled,
   },
   metaText: {
     ...Typography.caption,

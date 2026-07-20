@@ -14,6 +14,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../theme/colors';
 import { formatDate, getDaysUntilExpiry, getStatusConfig } from '../utils/formatters';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlertsStore } from '../store/alertsStore';
+import { buildAlertList } from '../utils/alertsHelper';
 
 LocaleConfig.locales['pt-br'] = {
   monthNames: [
@@ -45,11 +47,54 @@ function getUrgencyLabel(days) {
   return `${days} dias restantes`;
 }
 
+function getCalendarEventStyles(item) {
+  const days = getDaysUntilExpiry(item.dataVencimento);
+  const isExpired = days < 0;
+  const isExpiringSoon = days >= 0 && days <= 30;
+
+  if (isExpired) {
+    return {
+      bg: '#FFF5F5',
+      accent: Colors.error,
+      icon: 'alert-circle',
+      iconColor: Colors.error,
+    };
+  }
+  if (isExpiringSoon) {
+    return {
+      bg: '#FFF9F2',
+      accent: Colors.warning,
+      icon: 'clock-outline',
+      iconColor: Colors.warning,
+    };
+  }
+  if (item.tipo === 'veterinaria') {
+    return {
+      bg: '#F0FDF4',
+      accent: Colors.primary,
+      icon: 'paw',
+      iconColor: Colors.primary,
+    };
+  } else {
+    return {
+      bg: '#F0F9FF',
+      accent: Colors.secondary,
+      icon: 'medical-bag',
+      iconColor: Colors.secondary,
+    };
+  }
+}
+
 export function CalendarioScreen({ navigation }) {
   const licencas = useLicencasStore((s) => s.licencas);
   const [selectedDate, setSelectedDate] = useState(today);
   const [currentMonth, setCurrentMonth] = useState(today.substring(0, 7));
   const insets = useSafeAreaInsets();
+
+  const { countUnseen } = useAlertsStore();
+  const alertas = buildAlertList(licencas);
+  const unseenCount = countUnseen(alertas);
+  const hasCritical = alertas.some((a) => a.type === 'expired');
 
   // Build marked dates: colored dots per urgency
   const markedDates = useMemo(() => {
@@ -127,8 +172,39 @@ export function CalendarioScreen({ navigation }) {
         end={{ x: 1, y: 0 }}
         style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
-        <Text style={styles.headerTitle}>Calendário</Text>
-        <Text style={styles.headerSubtitle}>Vencimentos do mês</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Calendário</Text>
+            <Text style={styles.headerSubtitle}>Vencimentos do mês</Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.bellBtn,
+              hasCritical && styles.bellBtnCritical,
+            ]}
+            onPress={() => navigation.navigate('Alertas')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name={
+                hasCritical
+                  ? 'bell-ring'
+                  : unseenCount > 0
+                  ? 'bell-badge-outline'
+                  : 'bell-outline'
+              }
+              size={20}
+              color="#fff"
+            />
+            {unseenCount > 0 && (
+              <View style={styles.unseenBadge}>
+                <Text style={styles.unseenBadgeText}>
+                  {unseenCount > 9 ? '9+' : unseenCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Month stats */}
         <View style={styles.statsRow}>
@@ -220,42 +296,43 @@ export function CalendarioScreen({ navigation }) {
         }
         renderItem={({ item }) => {
           const days = getDaysUntilExpiry(item.dataVencimento);
-          const urgencyColor = getUrgencyColor(item);
-          const statusConfig = getStatusConfig(item.status);
+          const evStyle = getCalendarEventStyles(item);
 
           return (
             <TouchableOpacity
-              style={[styles.licencaCard, Shadows.sm, { borderLeftColor: urgencyColor }]}
+              style={[
+                styles.googleEventCard,
+                {
+                  backgroundColor: evStyle.bg,
+                  borderLeftColor: evStyle.accent,
+                },
+              ]}
               onPress={() => navigation.navigate('DetalheLicenca', { id: item.id })}
               activeOpacity={0.72}
             >
-              <View style={styles.cardMain}>
-                <View style={[styles.cardIcon, { backgroundColor: urgencyColor + '15' }]}>
-                  <MaterialCommunityIcons
-                    name={item.tipo === 'veterinaria' ? 'paw' : 'medical-bag'}
-                    size={22}
-                    color={urgencyColor}
-                  />
+              <View style={styles.eventLeft}>
+                <View style={styles.eventTimeWrap}>
+                  <Text style={[styles.eventTime, { color: evStyle.accent }]}>Vence</Text>
+                  <Text style={styles.eventDate}>
+                    {item.dataVencimento ? item.dataVencimento.split('-')[2] : '—'}
+                  </Text>
                 </View>
+                <View style={styles.eventDivider} />
+              </View>
 
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardNome} numberOfLines={1}>{item.nome}</Text>
-                  <Text style={styles.cardCodigo}>{item.codigo} · {item.tipo === 'veterinaria' ? 'Veterinária' : 'Sanitária'}</Text>
-                  <View style={styles.cardMeta}>
-                    <View style={[styles.urgencyBadge, { backgroundColor: urgencyColor + '18' }]}>
-                      <MaterialCommunityIcons
-                        name={days < 0 ? 'alert-circle' : 'clock-outline'}
-                        size={11}
-                        color={urgencyColor}
-                      />
-                      <Text style={[styles.urgencyText, { color: urgencyColor }]}>
-                        {getUrgencyLabel(days)}
-                      </Text>
-                    </View>
-                  </View>
+              <View style={styles.eventRight}>
+                <View style={styles.eventHeaderRow}>
+                  <Text style={styles.eventTitle} numberOfLines={1}>
+                    {item.nome}
+                  </Text>
+                  <MaterialCommunityIcons name={evStyle.icon} size={18} color={evStyle.iconColor} />
                 </View>
-
-                <MaterialCommunityIcons name="chevron-right" size={22} color={Colors.textDisabled} />
+                <Text style={styles.eventSubtitle}>
+                  {item.codigo} · {item.tipo === 'veterinaria' ? 'Veterinária' : 'Sanitária'}
+                </Text>
+                <Text style={[styles.eventUrgency, { color: evStyle.iconColor }]}>
+                  {getUrgencyLabel(days)}
+                </Text>
               </View>
             </TouchableOpacity>
           );
@@ -346,6 +423,12 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
     paddingHorizontal: Spacing.md,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.md,
+  },
   headerTitle: {
     ...Typography.h2,
     color: '#fff',
@@ -355,6 +438,39 @@ const styles = StyleSheet.create({
     ...Typography.body2,
     color: 'rgba(255,255,255,0.75)',
     marginBottom: Spacing.md,
+  },
+  bellBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  bellBtnCritical: {
+    backgroundColor: Colors.error,
+    borderColor: 'transparent',
+  },
+  unseenBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: Colors.gradientEnd,
+  },
+  unseenBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#fff',
   },
   statsRow: {
     flexDirection: 'row',
@@ -420,58 +536,74 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  licencaCard: {
+  googleEventCard: {
+    flexDirection: 'row',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
-    borderLeftWidth: 4,
-    overflow: 'hidden',
+    borderLeftWidth: 5,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  cardMain: {
+  eventLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    gap: Spacing.sm,
+    width: 65,
   },
-  cardIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: BorderRadius.sm,
+  eventTimeWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-  },
-  cardInfo: {
     flex: 1,
+  },
+  eventTime: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  eventDate: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  eventDivider: {
+    width: 1.5,
+    height: 32,
+    backgroundColor: '#E2E8F0',
+    marginLeft: Spacing.sm,
+  },
+  eventRight: {
+    flex: 1,
+    paddingLeft: Spacing.xs,
     gap: 2,
   },
-  cardNome: {
-    ...Typography.h4,
-    color: Colors.textPrimary,
-  },
-  cardCodigo: {
-    ...Typography.caption,
-    color: Colors.textTertiary,
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  cardMeta: {
+  eventHeaderRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-    marginTop: 4,
-  },
-  urgencyBadge: {
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
   },
-  urgencyText: {
-    ...Typography.caption,
+  eventTitle: {
+    fontSize: 15,
     fontWeight: '700',
+    color: Colors.textPrimary,
+    flex: 1,
+    marginRight: Spacing.xs,
+  },
+  eventSubtitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  eventUrgency: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
   },
 
   empty: {

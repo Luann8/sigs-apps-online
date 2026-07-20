@@ -1,4 +1,4 @@
-import { getDaysUntilExpiry, formatDate } from './formatters';
+import { getDaysUntilExpiry, formatDate, getTipoLicencaConfig } from './formatters';
 
 /**
  * Gera a lista padronizada de alertas a partir das licenças.
@@ -10,13 +10,16 @@ export function buildAlertList(licencas) {
 
   licencas.forEach((l) => {
     const days = getDaysUntilExpiry(l.dataVencimento);
+    const label = l.tipoLicenca
+      ? getTipoLicencaConfig(l.tipoLicenca).label
+      : (l.nome || 'Licença');
 
     if (days < 0 || l.status === 'vencida') {
       list.push({
         id: `vencida-${l.id}`,
         type: 'critical',
         title: 'Licença vencida',
-        subtitle: l.nome,
+        subtitle: label,
         date: l.dataVencimento,
         icon: 'alert-octagon',
         licencaId: l.id,
@@ -27,7 +30,7 @@ export function buildAlertList(licencas) {
         id: `urgente-${l.id}`,
         type: 'urgent',
         title: 'Vencimento urgente',
-        subtitle: l.nome,
+        subtitle: label,
         date: l.dataVencimento,
         icon: 'clock-alert',
         licencaId: l.id,
@@ -38,7 +41,7 @@ export function buildAlertList(licencas) {
         id: `vencendo-${l.id}`,
         type: 'warning',
         title: 'Vencimento próximo',
-        subtitle: l.nome,
+        subtitle: label,
         date: l.dataVencimento,
         icon: 'clock-outline',
         licencaId: l.id,
@@ -52,7 +55,7 @@ export function buildAlertList(licencas) {
         id: `pendente-${l.id}`,
         type: 'info',
         title: 'Inspeção pendente',
-        subtitle: l.nome,
+        subtitle: label,
         icon: 'clipboard-text-search-outline',
         licencaId: l.id,
         description: 'Existe uma inspeção aguardando conclusão.',

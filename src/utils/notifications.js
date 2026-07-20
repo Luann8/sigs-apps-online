@@ -78,7 +78,7 @@ export async function agendarNotificacaoVencimento(licenca) {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: '⚠️ Licença próxima do vencimento',
-        body: `"${licenca.nome}" vence em ${diasAntecedencia} dia${diasAntecedencia !== 1 ? 's' : ''}.`,
+        body: `"${licenca.tipoLicenca || licenca.nome || 'Licença'}" vence em ${diasAntecedencia} dia${diasAntecedencia !== 1 ? 's' : ''}.`,
         data: { licencaId: licenca.id, screen: 'DetalheLicenca' },
         sound: 'default',
         // Android: cor da notificação e ícone pequeno
@@ -103,7 +103,7 @@ export async function agendarNotificacaoVencimento(licenca) {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '🚨 Licença vence amanhã',
-          body: `"${licenca.nome}" vence amanhã. Renove antes que seja tarde.`,
+          body: `"${licenca.tipoLicenca || licenca.nome || 'Licença'}" vence amanhã. Renove antes que seja tarde.`,
           data: { licencaId: licenca.id, screen: 'DetalheLicenca' },
           sound: 'default',
           color: '#C62828',
@@ -124,7 +124,7 @@ export async function agendarNotificacaoVencimento(licenca) {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: '🔴 Licença vence hoje',
-        body: `"${licenca.nome}" vence hoje. Acesse o SIGS para renovar.`,
+        body: `"${licenca.tipoLicenca || licenca.nome || 'Licença'}" vence hoje. Acesse o SIGS para renovar.`,
         data: { licencaId: licenca.id, screen: 'DetalheLicenca' },
         sound: 'default',
         color: '#C62828',

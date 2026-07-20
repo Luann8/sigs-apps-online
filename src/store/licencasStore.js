@@ -1,8 +1,5 @@
 import { create } from 'zustand';
-import { DatabaseService, initDatabase } from '../database/database';
-
-// Initialize DB on first import
-initDatabase();
+import { DatabaseService } from '../database/database';
 
 export const useLicencasStore = create((set, get) => ({
   licencas: [],
@@ -10,10 +7,13 @@ export const useLicencasStore = create((set, get) => ({
   filterTipo: 'todas',
   filterStatus: 'todas',
 
-  loadLicencas: () => {
+  loadLicencas: (estabelecimentoId) => {
+    if (!estabelecimentoId) {
+      set({ licencas: [] });
+      return;
+    }
     try {
-      const data = DatabaseService.getLicencas();
-      console.log('Licenças carregadas com sucesso:', data.length);
+      const data = DatabaseService.getLicencas(estabelecimentoId);
       set({ licencas: data });
     } catch (error) {
       console.error('Erro crítico ao carregar as licenças:', error);
@@ -27,7 +27,6 @@ export const useLicencasStore = create((set, get) => ({
   addLicenca: (licenca) => {
     try {
       DatabaseService.addLicenca(licenca);
-      console.log('Licença salva no banco com sucesso:', licenca.id);
       set((state) => ({ licencas: [licenca, ...state.licencas] }));
     } catch (error) {
       console.error('Erro crítico ao salvar licença no banco:', error);
@@ -63,10 +62,11 @@ export const useLicencasStore = create((set, get) => ({
   getFilteredLicencas: () => {
     const { licencas, searchQuery, filterTipo, filterStatus } = get();
     return licencas.filter((l) => {
+      const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
-        l.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        l.codigo.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesTipo = filterTipo === 'todas' || l.tipo === filterTipo;
+        (l.tipoLicenca || '').toLowerCase().includes(searchLower) ||
+        (l.codigo || '').toLowerCase().includes(searchLower);
+      const matchesTipo = filterTipo === 'todas' || l.tipoLicenca === filterTipo;
       const matchesStatus = filterStatus === 'todas' || l.status === filterStatus;
       return matchesSearch && matchesTipo && matchesStatus;
     });

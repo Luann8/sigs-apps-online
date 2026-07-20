@@ -37,6 +37,7 @@ export const useAlertsStore = create(
        * Recebe o array de alertas gerado pela AlertasScreen.
        */
       countUnseen: (alertas) => {
+        if (!alertas || !Array.isArray(alertas)) return 0;
         const seen = new Set(get().seenIds);
         return alertas.filter((a) => !seen.has(a.id)).length;
       },

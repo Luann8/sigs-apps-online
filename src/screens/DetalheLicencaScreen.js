@@ -11,15 +11,17 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLicencasStore } from '../store/licencasStore';
+import { useEstabelecimentosStore } from '../store/estabelecimentosStore';
 import { InspecaoCard } from '../components/InspecaoCard';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../theme/colors';
-import { formatDate, getStatusConfig, getTipoConfig, getDaysUntilExpiry } from '../utils/formatters';
+import { formatDate, getStatusConfig, getTipoLicencaConfig, getDaysUntilExpiry } from '../utils/formatters';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function DetalheLicencaScreen({ route, navigation }) {
   const { id } = route.params;
   const { getLicencaById, deleteLicenca } = useLicencasStore();
   const licenca = getLicencaById(id);
+  const estabelecimentoAtual = useEstabelecimentosStore((s) => s.estabelecimentoAtual);
   const insets = useSafeAreaInsets();
 
   if (!licenca) {
@@ -32,7 +34,7 @@ export function DetalheLicencaScreen({ route, navigation }) {
   }
 
   const statusConfig = getStatusConfig(licenca.status);
-  const tipoConfig = getTipoConfig(licenca.tipo);
+  const tipoConfig = getTipoLicencaConfig(licenca.tipoLicenca);
   const daysLeft = getDaysUntilExpiry(licenca.dataVencimento);
   const isExpired = daysLeft <= 0;
   const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
@@ -92,14 +94,14 @@ export function DetalheLicencaScreen({ route, navigation }) {
       >
         {/* Urgency + type banner */}
         <View style={styles.bannerRow}>
-          <View style={[styles.typeBadge, { backgroundColor: tipoConfig.bg }]}>
+          <View style={[styles.typeBadge, { backgroundColor: Colors.primary + '18' }]}>
             <MaterialCommunityIcons
-              name={licenca.tipo === 'veterinaria' ? 'paw' : 'medical-bag'}
+              name={tipoConfig.icon || 'file-document-outline'}
               size={14}
-              color={tipoConfig.color}
+              color={Colors.primary}
             />
-            <Text style={[styles.typeBadgeText, { color: tipoConfig.color }]}>
-              Licença {tipoConfig.label}
+            <Text style={[styles.typeBadgeText, { color: Colors.primary }]}>
+              {tipoConfig.label}
             </Text>
           </View>
           <View style={[styles.urgencyBadge, { backgroundColor: urgencyColor + '18' }]}>
@@ -151,14 +153,14 @@ export function DetalheLicencaScreen({ route, navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Estabelecimento</Text>
           <View style={[styles.infoCard, Shadows.sm]}>
-            <InfoRow icon="domain" label="Razão Social" value={licenca.nome} />
-            <InfoRow icon="map-marker-outline" label="Endereço" value={licenca.endereco} />
-            <InfoRow icon="card-account-details-outline" label="CNPJ" value={licenca.cnpj} />
-            {licenca.telefone && licenca.telefone !== '—' && (
-              <InfoRow icon="phone-outline" label="Telefone" value={licenca.telefone} />
+            <InfoRow icon="domain" label="Razão Social" value={estabelecimentoAtual?.nome || licenca.nome || '—'} />
+            <InfoRow icon="map-marker-outline" label="Endereço" value={estabelecimentoAtual?.endereco || licenca.endereco || '—'} />
+            <InfoRow icon="card-account-details-outline" label="CNPJ" value={estabelecimentoAtual?.cnpj || licenca.cnpj || '—'} />
+            {(estabelecimentoAtual?.telefone || licenca.telefone) && (estabelecimentoAtual?.telefone || licenca.telefone) !== '—' && (
+              <InfoRow icon="phone-outline" label="Telefone" value={estabelecimentoAtual?.telefone || licenca.telefone} />
             )}
-            {licenca.email && licenca.email !== '—' && (
-              <InfoRow icon="email-outline" label="E-mail" value={licenca.email} last />
+            {(estabelecimentoAtual?.email || licenca.email) && (estabelecimentoAtual?.email || licenca.email) !== '—' && (
+              <InfoRow icon="email-outline" label="E-mail" value={estabelecimentoAtual?.email || licenca.email} last />
             )}
           </View>
         </View>
@@ -167,9 +169,9 @@ export function DetalheLicencaScreen({ route, navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Responsável Técnico</Text>
           <View style={[styles.infoCard, Shadows.sm]}>
-            <InfoRow icon="account-outline" label="Nome" value={licenca.responsavel} />
-            {licenca.crmv ? (
-              <InfoRow icon="certificate-outline" label="CRMV" value={licenca.crmv} last />
+            <InfoRow icon="account-outline" label="Nome" value={estabelecimentoAtual?.responsavel || licenca.responsavel || '—'} />
+            {(estabelecimentoAtual?.crmv || licenca.crmv) ? (
+              <InfoRow icon="certificate-outline" label="CRMV" value={estabelecimentoAtual?.crmv || licenca.crmv} last />
             ) : null}
           </View>
         </View>

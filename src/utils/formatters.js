@@ -1,5 +1,24 @@
 import { Colors } from '../theme/colors';
 
+export const TIPOS_LICENCA = [
+  { key: 'alvara_funcionamento',  label: 'Alvará de Localização e Funcionamento',                        icon: 'store-check-outline' },
+  { key: 'alvara_sanitario',      label: 'Licença ou Alvará Sanitário',                                  icon: 'medical-bag' },
+  { key: 'crmv',                  label: 'Registro da Pessoa Jurídica no CRMV',                          icon: 'paw' },
+  { key: 'termo_responsabilidade',label: 'Termo de Responsabilidade Técnica',                            icon: 'file-sign' },
+  { key: 'licenca_ambiental',     label: 'Licença Ambiental',                                            icon: 'leaf' },
+  { key: 'pgrss',                 label: 'Plano de Gerenciamento de Resíduos de Serviços de Saúde (PGRSS)', icon: 'recycle' },
+  { key: 'contrato_rss',          label: 'Contrato de Coleta de RSS',                                    icon: 'truck-outline' },
+  { key: 'bombeiros',             label: 'Certificado de Licença do Bombeiros',                          icon: 'fire-extinguisher' },
+  { key: 'potabilidade_agua',     label: 'Controle de Potabilidade da Água e Limpeza de Reservatório',   icon: 'water-check-outline' },
+  { key: 'desinsetizacao',        label: 'Certificado de Desinsetização e Desratização',                 icon: 'bug-outline' },
+  { key: 'radioproteção',         label: 'Plano de Radioproteção',                                       icon: 'radioactive' },
+];
+
+export function getTipoLicencaConfig(key) {
+  const found = TIPOS_LICENCA.find((t) => t.key === key);
+  return found || { key, label: key || 'Desconhecido', icon: 'file-document-outline' };
+}
+
 export function formatDate(dateStr) {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-');

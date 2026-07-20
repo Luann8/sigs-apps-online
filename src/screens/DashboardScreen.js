@@ -16,46 +16,15 @@ import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../theme/col
 import { getDaysUntilExpiry } from '../utils/formatters';
 import { buildAlertList } from '../utils/alertsHelper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSettingsStore } from '../store/settingsStore';
-import { OnboardingTour } from '../components/OnboardingTour';
+import { useEstabelecimentosStore } from '../store/estabelecimentosStore';
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Bom dia';
-  if (h < 18) return 'Boa tarde';
-  return 'Boa noite';
-}
 
-function getGreetingIcon() {
-  const h = new Date().getHours();
-  if (h < 12) return 'weather-sunny';
-  if (h < 18) return 'weather-partly-cloudy';
-  return 'weather-night';
-}
 
 export function DashboardScreen({ navigation }) {
   const { licencas } = useLicencasStore();
   const { countUnseen, isSeen } = useAlertsStore();
   const insets = useSafeAreaInsets();
-
-  const { hasSeenTutorial, setHasSeenTutorial } = useSettingsStore();
-  const [tourVisible, setTourVisible] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!hasSeenTutorial) {
-      const timer = setTimeout(() => {
-        setTourVisible(true);
-      }, 600);
-      return () => clearTimeout(timer);
-    } else {
-      setTourVisible(false);
-    }
-  }, [hasSeenTutorial]);
-
-  const handleCloseTour = () => {
-    setTourVisible(false);
-    setHasSeenTutorial(true);
-  };
+  const estabelecimentoAtual = useEstabelecimentosStore((s) => s.estabelecimentoAtual);
 
   const stats = useMemo(() => {
     const total    = licencas.length;
@@ -93,20 +62,19 @@ export function DashboardScreen({ navigation }) {
         end={{ x: 1, y: 0 }}
         style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
-        <View style={styles.greetRow}>
-          <View>
-            <View style={styles.greetLine}>
-              <MaterialCommunityIcons
-                name={getGreetingIcon()}
-                size={16}
-                color="rgba(255,255,255,0.75)"
-              />
-              <Text style={styles.greetText}>{getGreeting()}</Text>
-            </View>
-            <Text style={styles.headerTitle}>Painel</Text>
+        <View style={styles.headerTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Painel de Controle</Text>
+            {estabelecimentoAtual ? (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>
+                {estabelecimentoAtual.nome}
+              </Text>
+            ) : (
+              <Text style={styles.headerSubtitle}>SIGS Gestão Sanitária</Text>
+            )}
           </View>
 
-          {/* Botão de notificações — sempre visível, muda de aparência */}
+          {/* Botão de notificações */}
           <TouchableOpacity
             style={[
               styles.bellBtn,
@@ -119,14 +87,13 @@ export function DashboardScreen({ navigation }) {
               name={
                 hasCritical
                   ? 'bell-ring'
-                  : alertas.length > 0
+                  : unseenCount > 0
                   ? 'bell-badge-outline'
                   : 'bell-outline'
               }
               size={20}
               color="#fff"
             />
-            {/* Badge de não lidos */}
             {unseenCount > 0 && (
               <View style={styles.unseenBadge}>
                 <Text style={styles.unseenBadgeText}>
@@ -135,17 +102,6 @@ export function DashboardScreen({ navigation }) {
               </View>
             )}
           </TouchableOpacity>
-        </View>
-
-        {/* Summary strip */}
-        <View style={styles.summaryStrip}>
-          <SummaryItem value={stats.total}    label="Total"    color="#fff" />
-          <View style={styles.stripDiv} />
-          <SummaryItem value={stats.ativas}   label="Ativas"   color="#A5D6A7" />
-          <View style={styles.stripDiv} />
-          <SummaryItem value={stats.vencendo} label="Vencendo" color="#FFCC80" />
-          <View style={styles.stripDiv} />
-          <SummaryItem value={stats.vencidas} label="Vencidas" color="#EF9A9A" />
         </View>
       </LinearGradient>
 
@@ -157,22 +113,21 @@ export function DashboardScreen({ navigation }) {
       >
         {/* KPIs */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Status das licenças</Text>
+          <Text style={styles.sectionTitle}>Status Geral</Text>
           <View style={styles.kpiGrid}>
+            <KpiCard label="Total"     value={stats.total}    icon="ballot-outline"        color={Colors.secondary}    bgColor={Colors.surfaceVariant} />
             <KpiCard label="Ativas"    value={stats.ativas}   icon="check-circle-outline"  color={Colors.success}      bgColor={Colors.successBg}   />
-            <KpiCard label="Pendentes" value={stats.pendentes} icon="clock-outline"          color={Colors.warning}      bgColor={Colors.warningBg}   />
+            <KpiCard label="Atenção"   value={stats.vencendo} icon="clock-outline"          color={Colors.warning}      bgColor={Colors.warningBg}   />
             <KpiCard label="Vencidas"  value={stats.vencidas}  icon="alert-circle-outline"  color={Colors.error}        bgColor={Colors.errorBg}     />
-            <KpiCard label="Suspensas" value={stats.suspensas} icon="minus-circle-outline"  color={Colors.textTertiary} bgColor={Colors.surfaceVariant} />
           </View>
         </View>
 
         {/* Por tipo */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Por tipo</Text>
+          <Text style={styles.sectionTitle}>Categorias</Text>
           <View style={styles.typeRow}>
-            <TypeCard icon="paw"           label="Veterinária" value={stats.veterinarias} color={Colors.veterinaria} bg={Colors.veterinariaBg} />
-            <TypeCard icon="medical-bag"   label="Sanitária"   value={stats.sanitarias}   color={Colors.sanitaria}   bg={Colors.sanitariaBg}   />
-            <TypeCard icon="calendar-alert" label="Vencendo"   value={stats.vencendo}     color={Colors.warning}     bg={Colors.warningBg}     />
+            <TypeCard icon="paw"           label="Veterinárias" value={stats.veterinarias} color={Colors.veterinaria} bg={Colors.veterinariaBg} />
+            <TypeCard icon="medical-bag"   label="Sanitárias"   value={stats.sanitarias}   color={Colors.sanitaria}   bg={Colors.sanitariaBg}   />
           </View>
         </View>
 
@@ -253,7 +208,6 @@ export function DashboardScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
-      <OnboardingTour visible={tourVisible} onClose={handleCloseTour} />
     </View>
   );
 }
@@ -324,24 +278,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
     paddingHorizontal: Spacing.md,
   },
-  greetRow: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: Spacing.md,
-  },
-  greetLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 3,
-  },
-  greetText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.75)',
   },
   headerTitle: { ...Typography.h2, color: '#fff' },
+  headerSubtitle: { ...Typography.body2, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
 
   // Botão sino
   bellBtn: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,12 @@ export function OnboardingTour({ visible, onClose }) {
   const [currentStep, setCurrentStep] = useState(0);
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  useEffect(() => {
+    if (visible) {
+      setCurrentStep(0);
+    }
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -103,8 +109,7 @@ export function OnboardingTour({ visible, onClose }) {
 
       case 'kpis': {
         // Grid de KPIs — header visível, sino precisa aparecer
-        const headerHeight = insets.top + 110;
-        const gridTop = insets.top + 145;
+        const gridTop = insets.top + 108;
         const gridHeight = 168;
         const bellTop = insets.top + 16;
         const bellRight = Spacing.md;
@@ -141,7 +146,7 @@ export function OnboardingTour({ visible, onClose }) {
 
       case 'types': {
         // Grid de tipos — header visível, sino precisa aparecer
-        const typesTop = insets.top + 338;
+        const typesTop = insets.top + 330;
         const typesHeight = 115;
         const bellTop = insets.top + 16;
         const bellRight = Spacing.md;
@@ -231,13 +236,13 @@ export function OnboardingTour({ visible, onClose }) {
         };
       case 'kpis':
         return {
-          top: insets.top + 325,
+          top: insets.top + 288,
           left,
           width: tooltipWidth,
         };
       case 'types':
         return {
-          top: insets.top + 215, // Mostra acima dos tipos para não encavalar
+          top: insets.top + 200, // Mostra acima dos tipos para não encavalar
           left,
           width: tooltipWidth,
         };

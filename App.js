@@ -19,9 +19,11 @@ import { CadastroScreen } from './src/screens/CadastroScreen';
 import { EditarLicencaScreen } from './src/screens/EditarLicencaScreen';
 import { ConfiguracoesScreen } from './src/screens/ConfiguracoesScreen';
 import { AlertasScreen } from './src/screens/AlertasScreen';
+import { EstabelecimentosScreen } from './src/screens/EstabelecimentosScreen';
 import Toast from 'react-native-toast-message';
 import { Colors, Shadows } from './src/theme/colors';
 import { useLicencasStore } from './src/store/licencasStore';
+import { useEstabelecimentosStore } from './src/store/estabelecimentosStore';
 import { requestPermissionsAsync, reagendarTodasAsNotificacoes } from './src/utils/notifications';
 import { getDaysUntilExpiry } from './src/utils/formatters';
 
@@ -129,9 +131,13 @@ function TabNavigator() {
 
 export default function App() {
   const loadLicencas = useLicencasStore((s) => s.loadLicencas);
+  const { loadEstabelecimentos, estabelecimentoAtual } = useEstabelecimentosStore();
 
   React.useEffect(() => {
-    loadLicencas();
+    loadEstabelecimentos();
+    if (estabelecimentoAtual?.id) {
+      loadLicencas(estabelecimentoAtual.id);
+    }
     requestPermissionsAsync().then(() => {
       const licencas = useLicencasStore.getState().licencas;
       reagendarTodasAsNotificacoes(licencas);
@@ -145,9 +151,10 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
+        <StatusBar style="auto" />
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+            <Stack.Screen name="Estabelecimentos" component={EstabelecimentosScreen} />
             <Stack.Screen name="Tabs" component={TabNavigator} />
             <Stack.Screen name="DetalheLicenca" component={DetalheLicencaScreen} />
             <Stack.Screen name="EditarLicenca" component={EditarLicencaScreen} />

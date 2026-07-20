@@ -9,6 +9,8 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useLicencasStore } from '../store/licencasStore';
 import { reagendarTodasAsNotificacoes } from '../utils/notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAlertsStore } from '../store/alertsStore';
+import { buildAlertList } from '../utils/alertsHelper';
 
 const OPCOES_DIAS = [1, 3, 7, 15, 30];
 
@@ -23,6 +25,11 @@ export function ConfiguracoesScreen() {
   const licencas = useLicencasStore((s) => s.licencas);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+
+  const { countUnseen } = useAlertsStore();
+  const alertas = buildAlertList(licencas);
+  const unseenCount = countUnseen(alertas);
+  const hasCritical = alertas.some((a) => a.type === 'expired');
 
   const handleStartTutorial = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -52,8 +59,39 @@ export function ConfiguracoesScreen() {
         end={{ x: 1, y: 0 }}
         style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
-        <Text style={styles.headerTitle}>Configurações</Text>
-        <Text style={styles.headerSubtitle}>Preferências do sistema</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Configurações</Text>
+            <Text style={styles.headerSubtitle}>Preferências do sistema</Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.bellBtn,
+              hasCritical && styles.bellBtnCritical,
+            ]}
+            onPress={() => navigation.navigate('Alertas')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name={
+                hasCritical
+                  ? 'bell-ring'
+                  : unseenCount > 0
+                  ? 'bell-badge-outline'
+                  : 'bell-outline'
+              }
+              size={20}
+              color="#fff"
+            />
+            {unseenCount > 0 && (
+              <View style={styles.unseenBadge}>
+                <Text style={styles.unseenBadgeText}>
+                  {unseenCount > 9 ? '9+' : unseenCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       <ScrollView
@@ -161,8 +199,47 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
     paddingHorizontal: Spacing.md,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.md,
+  },
   headerTitle: { ...Typography.h2, color: '#fff' },
   headerSubtitle: { ...Typography.body2, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  bellBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  bellBtnCritical: {
+    backgroundColor: Colors.error,
+    borderColor: 'transparent',
+  },
+  unseenBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: Colors.gradientEnd,
+  },
+  unseenBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#fff',
+  },
 
   content: {
     padding: Spacing.md,

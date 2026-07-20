@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
+  FlatList,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -20,30 +21,23 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import * as Haptics from 'expo-haptics';
 import { useLicencasStore } from '../store/licencasStore';
+import { useEstabelecimentosStore } from '../store/estabelecimentosStore';
 import { Colors, Spacing, Typography, BorderRadius } from '../theme/colors';
 import { agendarNotificacaoVencimento } from '../utils/notifications';
+import { TIPOS_LICENCA, getTipoLicencaConfig } from '../utils/formatters';
 
-const TIPOS = [
-  { key: 'veterinaria', label: 'Veterinária', icon: 'paw' },
-  { key: 'sanitaria', label: 'Sanitária', icon: 'medical-bag' },
-];
 
 export function EditarLicencaScreen({ route, navigation }) {
   const { licencaId } = route.params;
   const { getLicencaById, updateLicenca } = useLicencasStore();
   const licenca = getLicencaById(licencaId);
+  const estabelecimentoAtual = useEstabelecimentosStore((s) => s.estabelecimentoAtual);
 
-  const [nome, setNome] = useState(licenca?.nome || '');
-  const [cnpj, setCnpj] = useState(licenca?.cnpj || '');
-  const [endereco, setEndereco] = useState(licenca?.endereco || '');
-  const [telefone, setTelefone] = useState(licenca?.telefone === '—' ? '' : (licenca?.telefone || ''));
-  const [email, setEmail] = useState(licenca?.email === '—' ? '' : (licenca?.email || ''));
-  const [responsavel, setResponsavel] = useState(licenca?.responsavel || '');
-  const [crmv, setCrmv] = useState(licenca?.crmv || '');
-  const [tipo, setTipo] = useState(licenca?.tipo || 'veterinaria');
+  const [tipoLicenca, setTipoLicenca] = useState(licenca?.tipoLicenca || '');
   const [dataVencimento, setDataVencimento] = useState(licenca?.dataVencimento || '');
   const [status, setStatus] = useState(licenca?.status || 'pendente');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTipoModal, setShowTipoModal] = useState(false);
   const [errors, setErrors] = useState({});
   const [anexoUri, setAnexoUri] = useState(licenca?.anexoUri || null);
   
@@ -100,42 +94,16 @@ export function EditarLicencaScreen({ route, navigation }) {
 
   function validate() {
     const newErrors = {};
-    if (!nome.trim()) newErrors.nome = 'Nome é obrigatório';
-    
-    if (!cnpj.trim()) {
-      newErrors.cnpj = 'CNPJ é obrigatório';
-    } else if (cnpj.replace(/\D/g, '').length !== 14) {
-      newErrors.cnpj = 'CNPJ deve ter 14 dígitos';
-    }
-
-    if (!endereco.trim()) newErrors.endereco = 'Endereço é obrigatório';
-    if (!responsavel.trim()) newErrors.responsavel = 'Responsável é obrigatório';
-
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'E-mail inválido';
-    }
-
-    if (telefone && telefone.replace(/\D/g, '').length < 10) {
-      newErrors.telefone = 'Telefone muito curto';
-    }
-
+    if (!tipoLicenca) newErrors.tipoLicenca = 'Selecione o tipo de licença';
     if (!dataVencimento.trim()) {
       newErrors.dataVencimento = 'Data de vencimento é obrigatória';
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(dataVencimento)) {
       newErrors.dataVencimento = 'Use o formato AAAA-MM-DD';
     }
-
-    if (tipo === 'veterinaria' && (!crmv || !crmv.trim())) newErrors.crmv = 'CRMV é obrigatório para licenças veterinárias';
-    
     setErrors(newErrors);
-    
     if (Object.keys(newErrors).length > 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Toast.show({
-        type: 'error',
-        text1: 'Atenção',
-        text2: 'Preencha todos os campos obrigatórios corretamente.',
-      });
+      Toast.show({ type: 'error', text1: 'Atenção', text2: 'Preencha todos os campos obrigatórios.' });
       return false;
     }
     return true;
@@ -146,14 +114,7 @@ export function EditarLicencaScreen({ route, navigation }) {
 
     try {
       const updates = {
-        nome,
-        cnpj,
-        endereco,
-        telefone: telefone || '—',
-        email: email || '—',
-        responsavel,
-        crmv: tipo === 'veterinaria' ? crmv : undefined,
-        tipo,
+        tipoLicenca,
         status,
         dataVencimento,
         anexoUri,
@@ -166,7 +127,7 @@ export function EditarLicencaScreen({ route, navigation }) {
       Toast.show({
         type: 'success',
         text1: 'Licença Atualizada',
-        text2: `A licença de "${nome}" foi atualizada com sucesso.`,
+        text2: `A licença foi atualizada com sucesso.`,
       });
       navigation.goBack();
     } catch (error) {
@@ -195,7 +156,9 @@ export function EditarLicencaScreen({ route, navigation }) {
               <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Editar / Renovar</Text>
-            <Text style={styles.headerSubtitle}>Atualize os dados e a validade da licença</Text>
+            {estabelecimentoAtual && (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>{estabelecimentoAtual.nome}</Text>
+            )}
           </LinearGradient>
 
           <ScrollView 
@@ -204,31 +167,34 @@ export function EditarLicencaScreen({ route, navigation }) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Tipo selector */}
+            {/* Tipo de Licença */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Tipo de Licença *</Text>
-              <View style={styles.tipoRow}>
-                {TIPOS.map((t) => (
-                  <TouchableOpacity
-                    key={t.key}
-                    style={[styles.tipoCard, tipo === t.key && styles.tipoCardSelected]}
-                    onPress={() => setTipo(t.key)}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons
-                      name={t.icon}
-                      size={26}
-                      color={tipo === t.key ? Colors.primary : Colors.textSecondary}
-                    />
-                    <Text style={[styles.tipoLabel, tipo === t.key && styles.tipoLabelSelected]}>
-                      {t.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <TouchableOpacity
+                style={[styles.tipoSelector, errors.tipoLicenca && styles.tipoSelectorError]}
+                onPress={() => setShowTipoModal(true)}
+                activeOpacity={0.8}
+              >
+                {tipoLicenca ? (
+                  <View style={styles.tipoSelectorContent}>
+                    <MaterialCommunityIcons name={getTipoLicencaConfig(tipoLicenca).icon || 'file-document-outline'} size={22} color={Colors.primary} />
+                    <Text style={styles.tipoSelectorText} numberOfLines={2}>{getTipoLicencaConfig(tipoLicenca).label}</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.textSecondary} />
+                  </View>
+                ) : (
+                  <View style={styles.tipoSelectorContent}>
+                    <MaterialCommunityIcons name="file-document-outline" size={22} color={Colors.textDisabled} />
+                    <Text style={styles.tipoSelectorPlaceholder}>Selecione o tipo de licença...</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.textDisabled} />
+                  </View>
+                )}
+              </TouchableOpacity>
+              {errors.tipoLicenca && (
+                <Text style={styles.errorText}><MaterialCommunityIcons name="alert-circle" size={14} /> {errors.tipoLicenca}</Text>
+              )}
             </View>
 
-            {/* Status selector (Renovar) */}
+            {/* Status selector */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Status</Text>
               <View style={styles.tipoRow}>
@@ -245,80 +211,6 @@ export function EditarLicencaScreen({ route, navigation }) {
                   <Text style={[styles.tipoLabel, status === 'ativa' && { color: Colors.success }]}>Ativa</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-
-            {/* Establishment info */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Dados do Estabelecimento</Text>
-              <FormField
-                label="Nome / Razão Social"
-                value={nome}
-                onChangeText={setNome}
-                placeholder="Ex: Clínica Veterinária Pet Care"
-                icon="domain"
-                error={errors.nome}
-                required
-              />
-              <FormField
-                label="CNPJ"
-                value={cnpj}
-                onChangeText={setCnpj}
-                placeholder="00.000.000/0001-00"
-                icon="card-account-details-outline"
-                keyboardType="numeric"
-                error={errors.cnpj}
-                required
-              />
-              <FormField
-                label="Endereço Completo"
-                value={endereco}
-                onChangeText={setEndereco}
-                placeholder="Rua, número, bairro, cidade"
-                icon="map-marker-outline"
-                error={errors.endereco}
-                required
-              />
-              <FormField
-                label="Telefone"
-                value={telefone}
-                onChangeText={setTelefone}
-                placeholder="(00) 0000-0000"
-                icon="phone-outline"
-                keyboardType="phone-pad"
-              />
-              <FormField
-                label="E-mail"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="contato@estabelecimento.com"
-                icon="email-outline"
-                keyboardType="email-address"
-              />
-            </View>
-
-            {/* Responsible */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Responsável Técnico</Text>
-              <FormField
-                label="Nome do Responsável"
-                value={responsavel}
-                onChangeText={setResponsavel}
-                placeholder="Dr(a). Nome Completo"
-                icon="account-outline"
-                error={errors.responsavel}
-                required
-              />
-              {tipo === 'veterinaria' && (
-                <FormField
-                  label="CRMV"
-                  value={crmv}
-                  onChangeText={setCrmv}
-                  placeholder="CRMV-SP 00000"
-                  icon="certificate-outline"
-                  error={errors.crmv}
-                  required
-                />
-              )}
             </View>
 
             {/* Validity */}
@@ -378,6 +270,36 @@ export function EditarLicencaScreen({ route, navigation }) {
             </TouchableOpacity>
           </ScrollView>
       </View>
+      {/* Modal tipo de licença */}
+      <Modal visible={showTipoModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTipoModal(false)}>
+        <View style={{ flex: 1, backgroundColor: Colors.background }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.md, paddingTop: 24, borderBottomWidth: 1, borderBottomColor: Colors.divider, backgroundColor: Colors.surface }}>
+            <Text style={{ ...Typography.h3, color: Colors.textPrimary }}>Selecione o Tipo</Text>
+            <TouchableOpacity onPress={() => setShowTipoModal(false)}>
+              <MaterialCommunityIcons name="close" size={26} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={TIPOS_LICENCA}
+            keyExtractor={(item) => item.key}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.tipoItem, tipoLicenca === item.key && styles.tipoItemSelected]}
+                onPress={() => { setTipoLicenca(item.key); setShowTipoModal(false); }}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.tipoItemIcon, tipoLicenca === item.key && styles.tipoItemIconSelected]}>
+                  <MaterialCommunityIcons name={item.icon} size={22} color={tipoLicenca === item.key ? Colors.primary : Colors.textSecondary} />
+                </View>
+                <Text style={[styles.tipoItemLabel, tipoLicenca === item.key && styles.tipoItemLabelSelected]}>{item.label}</Text>
+                {tipoLicenca === item.key && <MaterialCommunityIcons name="check-circle" size={20} color={Colors.primary} />}
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+      </Modal>
       <Modal visible={isCameraOpen} animationType="slide" onRequestClose={() => setIsCameraOpen(false)}>
         <View style={{ flex: 1, backgroundColor: '#000' }}>
           <CameraView 
@@ -515,25 +437,44 @@ const styles = StyleSheet.create({
   section: { marginBottom: Spacing.lg },
   sectionTitle: { ...Typography.h4, color: Colors.textPrimary, marginBottom: Spacing.md },
   tipoRow: { flexDirection: 'row', gap: Spacing.sm },
-  tipoCard: {
-    flex: 1,
+  tipoSelector: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    alignItems: 'center',
-    gap: Spacing.xs,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  tipoCardSelected: { 
-    borderColor: Colors.primary, 
-    backgroundColor: Colors.successBg,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+  tipoSelectorError: { borderColor: Colors.error, backgroundColor: '#FFF5F5' },
+  tipoSelectorContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  tipoSelectorText: { flex: 1, ...Typography.body1, color: Colors.textPrimary, fontWeight: '600' },
+  tipoSelectorPlaceholder: { flex: 1, ...Typography.body1, color: Colors.textDisabled },
+  errorText: { ...Typography.caption, color: Colors.error, marginTop: 6, fontWeight: '500' },
+  tipoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    gap: Spacing.md,
   },
+  tipoItemSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '08' },
+  tipoItemIcon: {
+    width: 40, height: 40, borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.surfaceVariant, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  tipoItemIconSelected: { backgroundColor: Colors.primary + '18' },
+  tipoItemLabel: { flex: 1, ...Typography.body2, color: Colors.textPrimary, fontWeight: '500', lineHeight: 20 },
+  tipoItemLabelSelected: { color: Colors.primary, fontWeight: '700' },
   statusPendenteSelected: {
     borderColor: Colors.warning, 
     backgroundColor: Colors.warning + '10',
