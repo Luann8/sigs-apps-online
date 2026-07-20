@@ -16,7 +16,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// ─── Permissões ───────────────────────────────────────────────────────────────
+// ─── Permissões ──────────────────────────────────────────────────────────────
 export async function requestPermissionsAsync() {
   if (Platform.OS === 'android') {
     // Canal dedicado com prioridade máxima e vibração
