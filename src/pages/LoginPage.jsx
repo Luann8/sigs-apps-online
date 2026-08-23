@@ -3,19 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { ShieldAlert, Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
   const createUserMutation = useMutation(api.usuarios.create);
+  const authMutation = useMutation(api.usuarios.authenticate);
 
   const [activeTab, setActiveTab] = useState('login'); // 'login' or 'register'
 
   // Login state
-  const [email, setEmail] = useState('fiscal@sigs.gov.br');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,8 +25,22 @@ export function LoginPage() {
   const [regEmail, setRegEmail] = useState('');
   const [regSenha, setRegSenha] = useState('');
   const [regRole, setRegRole] = useState('Fiscal Sanitário');
+  const [regAvatar, setRegAvatar] = useState('');
+  const fileInputRef = React.useRef(null);
 
-  const handleLogin = (e) => {
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Imagem muito grande. Máximo 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setRegAvatar(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error('Informe seu e-mail e senha.');
@@ -33,16 +48,16 @@ export function LoginPage() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const success = login(email, password);
-      if (success) {
-        toast.success('Login realizado com sucesso!');
-        navigate('/');
-      } else {
-        toast.error('Credenciais inválidas.');
-      }
+    try {
+      const userData = await authMutation({ email, senha: password });
+      login(userData);
+      toast.success(`Bem-vindo de volta, ${userData.name}!`);
+      navigate('/');
+    } catch (err) {
+      toast.error(err.message || 'Credenciais inválidas.');
+    } finally {
       setIsSubmitting(false);
-    }, 300);
+    }
   };
 
   const handleRegister = async (e) => {
@@ -54,8 +69,8 @@ export function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(regNome)}&background=00796B&color=fff&size=150`;
-      await createUserMutation({
+      const avatarUrl = regAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(regNome)}&background=00796B&color=fff&size=150&bold=true`;
+      const newUserId = await createUserMutation({
         nome: regNome,
         email: regEmail,
         senha: regSenha,
@@ -63,8 +78,8 @@ export function LoginPage() {
         avatar: avatarUrl,
       });
 
-      login(regEmail, regSenha, {
-        id: `user_${Date.now()}`,
+      login({
+        id: newUserId,
         name: regNome,
         email: regEmail,
         role: regRole,
@@ -206,6 +221,34 @@ export function LoginPage() {
           {/* REGISTER FORM */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-4">
+              {/* Avatar Upload / Preview */}
+              <div className="flex flex-col items-center justify-center space-y-2 pb-2">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-dashed border-[#00796B]/50 hover:border-[#00796B] bg-teal-50/40 dark:bg-zinc-800 flex items-center justify-center cursor-pointer group transition-all"
+                  title="Clique para enviar sua foto de perfil"
+                >
+                  {regAvatar ? (
+                    <img src={regAvatar} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-[#00796B] dark:text-teal-400">
+                      <Camera className="w-6 h-6 mb-0.5 group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] font-bold">Foto</span>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                </div>
+                <span className="text-[11px] text-gray-500 dark:text-zinc-400 font-medium">
+                  {regAvatar ? 'Foto selecionada (clique para trocar)' : 'Adicionar foto de perfil (opcional)'}
+                </span>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-zinc-400 mb-1">
                   Nome Completo *

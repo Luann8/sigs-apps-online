@@ -46,6 +46,7 @@ export function ConfiguracoesPage() {
 
   const createUserMutation = useMutation(api.usuarios.create);
   const removeUserMutation = useMutation(api.usuarios.remove);
+  const updateUserMutation = useMutation(api.usuarios.update);
 
   // Edit profile state
   const [editMode, setEditMode] = useState(false);
@@ -79,14 +80,30 @@ export function ConfiguracoesPage() {
   const [newRole, setNewRole] = useState('Fiscal Sanitário');
   const [newSenha, setNewSenha] = useState('');
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
+    const finalAvatar = avatarUrl || user?.avatar;
     updateProfile({
       name: nome,
       email: email,
       role: role,
-      avatar: avatarUrl || user?.avatar,
+      avatar: finalAvatar,
     });
+
+    if (user?.id && typeof user.id === 'string' && !user.id.startsWith('user_')) {
+      try {
+        await updateUserMutation({
+          id: user.id,
+          nome,
+          email,
+          role,
+          avatar: finalAvatar,
+        });
+      } catch (err) {
+        console.error('Erro ao atualizar usuário no Convex:', err);
+      }
+    }
+
     toast.success('Perfil atualizado com sucesso!');
     setEditMode(false);
   };

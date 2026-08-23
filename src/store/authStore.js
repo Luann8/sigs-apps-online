@@ -4,38 +4,14 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 export const useAuthStore = create(
   persist(
     (set, get) => ({
-      isAuthenticated: true,
-      user: {
-        id: 'user_default',
-        name: 'Fiscal Responsável',
-        email: 'fiscal@sigs.gov.br',
-        role: 'Administrador Sanitário',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      },
+      isAuthenticated: false,
+      user: null,
 
-      login: (email, password, customUser = null) => {
-        if (!email || !password) return false;
-
-        if (customUser) {
-          set({
-            isAuthenticated: true,
-            user: customUser,
-          });
-          return true;
-        }
-
-        const nameFromEmail = email.split('@')[0].replace('.', ' ');
-        const formattedName = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
-
+      login: (userData) => {
+        if (!userData) return false;
         set({
           isAuthenticated: true,
-          user: {
-            id: `user_${Date.now()}`,
-            name: formattedName || 'Usuário SIGS',
-            email: email,
-            role: 'Gestor de Alvarás',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          },
+          user: userData,
         });
         return true;
       },
