@@ -47,7 +47,8 @@
           "cameraPermission": "Permita que o app acesse a câmera para fotografar licenças e anexá-las."
         }
       ],
-      "expo-notifications"
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

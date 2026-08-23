@@ -26,7 +26,57 @@ export function formatDate(dateStr) {
 }
 
 export function formatCNPJ(cnpj) {
-  return cnpj;
+  if (!cnpj) return '';
+  const digits = cnpj.replace(/\D/g, '').slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+
+export function unmaskCNPJ(value) {
+  if (!value) return '';
+  return value.replace(/\D/g, '').slice(0, 14);
+}
+
+export function validarCNPJ(cnpj) {
+  const digits = unmaskCNPJ(cnpj);
+  if (digits.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(digits)) return false;
+
+  const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(digits[i], 10) * weights1[i];
+  }
+  let remainder = sum % 11;
+  const digit1 = remainder < 2 ? 0 : 11 - remainder;
+  if (parseInt(digits[12], 10) !== digit1) return false;
+
+  sum = 0;
+  for (let i = 0; i < 13; i++) {
+    sum += parseInt(digits[i], 10) * weights2[i];
+  }
+  remainder = sum % 11;
+  const digit2 = remainder < 2 ? 0 : 11 - remainder;
+  return parseInt(digits[13], 10) === digit2;
+}
+
+export function maskTelefone(value) {
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.length > 0 ? `(${digits}` : '';
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+export function unmaskTelefone(value) {
+  if (!value) return '';
+  return value.replace(/\D/g, '').slice(0, 11);
 }
 
 export function getDaysUntilExpiry(dateStr) {

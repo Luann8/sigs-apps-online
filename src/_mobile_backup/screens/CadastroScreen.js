@@ -1,0 +1,597 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  Modal,
+  FlatList,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+import * as Haptics from 'expo-haptics';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { useEstabelecimentosStore } from '../store/estabelecimentosStore';
+import { Colors, Spacing, Typography, BorderRadius } from '../theme/colors';
+import { generateCodigo, TIPOS_LICENCA } from '../utils/formatters';
+import { agendarNotificacaoVencimento } from '../utils/notifications';
+
+const STATUS_OPTIONS = [
+  { key: 'pendente', label: 'Pendente', color: Colors.warning },
+  { key: 'ativa',    label: 'Ativa',    color: Colors.success },
+];
+
+export function CadastroScreen({ navigation }) {
+  const createLicenca = useMutation(api.licencas.create);
+  const estabelecimentoAtual = useEstabelecimentosStore((s) => s.estabelecimentoAtual);
+  const licencas = useQuery(
+    estabelecimentoAtual?.id ? api.licencas.listByEstabelecimento : null,
+    estabelecimentoAtual?.id ? { estabelecimentoId: estabelecimentoAtual.id } : 'skip'
+  ) ?? [];
+
+  const [tipoLicenca, setTipoLicenca] = useState('');
+  const [status, setStatus] = useState('pendente');
+  const [dataVencimento, setDataVencimento] = useState('');
+  const [custo, setCusto] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTipoModal, setShowTipoModal] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [anexoUri, setAnexoUri] = useState(null);
+
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraRef, setCameraRef] = useState(null);
+
+  const tipoAtual = TIPOS_LICENCA.find((t) => t.key === tipoLicenca);
+
+  const onChangeDate = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      setDataVencimento(`${year}-${month}-${day}`);
+    }
+  };
+
+  const formatCusto = (text) => {
+    const digits = text.replace(/\D/g, '');
+    if (!digits) { setCusto(''); return; }
+    const value = (parseInt(digits, 10) / 100).toFixed(2);
+    setCusto(value);
+  };
+
+  const abrirCamera = async () => {
+    if (!permission?.granted) {
+      const { status } = await requestPermission();
+      if (status !== 'granted') {
+        Alert.alert('Permissão negada', 'Precisamos da câmera para escanear o documento.');
+        return;
+      }
+    }
+    setIsCameraOpen(true);
+  };
+
+  const tirarFoto = async () => {
+    if (cameraRef) {
+      try {
+        const photo = await cameraRef.takePictureAsync({ quality: 0.8 });
+        const filename = photo.uri.split('/').pop();
+        const newPath = `${FileSystem.documentDirectory}${filename}`;
+        await FileSystem.copyAsync({ from: photo.uri, to: newPath });
+        setAnexoUri(newPath);
+        setIsCameraOpen(false);
+      } catch (e) {
+        Alert.alert('Erro', 'Não foi possível capturar a foto.');
+      }
+    }
+  };
+
+  function validate() {
+    const newErrors = {};
+    if (!tipoLicenca) newErrors.tipoLicenca = 'Selecione o tipo de licença';
+    if (!dataVencimento.trim()) {
+      newErrors.dataVencimento = 'Data de vencimento é obrigatória';
+    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(dataVencimento)) {
+      newErrors.dataVencimento = 'Use o formato AAAA-MM-DD';
+    }
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Toast.show({ type: 'error', text1: 'Atenção', text2: 'Preencha todos os campos obrigatórios.' });
+      return false;
+    }
+    return true;
+  }
+
+  async function handleSalvar() {
+    if (!validate()) return;
+    if (!estabelecimentoAtual) {
+      Toast.show({ type: 'error', text1: 'Erro', text2: 'Nenhum estabelecimento selecionado.' });
+      return;
+    }
+
+    try {
+      const nextCode = licencas.length + 1;
+      const novaLicenca = {
+        estabelecimentoId: estabelecimentoAtual.id,
+        codigo: generateCodigo(nextCode),
+        tipoLicenca,
+        status,
+        dataEmissao: new Date().toISOString().split('T')[0],
+        dataVencimento,
+        anexoUri: anexoUri || undefined,
+        custo: custo ? parseFloat(custo) : undefined,
+      };
+
+      const id = await createLicenca(novaLicenca);
+      agendarNotificacaoVencimento({ id, ...novaLicenca });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Toast.show({
+        type: 'success',
+        text1: 'Licença Cadastrada!',
+        text2: tipoAtual?.label || tipoLicenca,
+      });
+
+      resetForm();
+      navigation.navigate('Licencas');
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Toast.show({ type: 'error', text1: 'Erro ao Salvar', text2: error.message });
+    }
+  }
+
+  function resetForm() {
+    setTipoLicenca('');
+    setStatus('pendente');
+    setDataVencimento('');
+    setCusto('');
+    setAnexoUri(null);
+    setErrors({});
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={{ flex: 1 }}>
+        {/* Header */}
+        <LinearGradient
+          colors={[Colors.gradientStart, Colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.header}
+        >
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Nova Licença</Text>
+          {estabelecimentoAtual ? (
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              {estabelecimentoAtual.nome}
+            </Text>
+          ) : null}
+        </LinearGradient>
+
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Tipo de Licença */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tipo de Licença *</Text>
+            <TouchableOpacity
+              style={[styles.tipoSelector, errors.tipoLicenca && styles.tipoSelectorError]}
+              onPress={() => setShowTipoModal(true)}
+              activeOpacity={0.8}
+            >
+              {tipoAtual ? (
+                <View style={styles.tipoSelectorContent}>
+                  <View style={styles.tipoSelectorIcon}>
+                    <MaterialCommunityIcons name={tipoAtual.icon} size={22} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.tipoSelectorText} numberOfLines={2}>{tipoAtual.label}</Text>
+                  <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.textSecondary} />
+                </View>
+              ) : (
+                <View style={styles.tipoSelectorContent}>
+                  <MaterialCommunityIcons name="file-document-outline" size={22} color={Colors.textDisabled} />
+                  <Text style={styles.tipoSelectorPlaceholder}>Selecione o tipo de licença...</Text>
+                  <MaterialCommunityIcons name="chevron-down" size={20} color={Colors.textDisabled} />
+                </View>
+              )}
+            </TouchableOpacity>
+            {errors.tipoLicenca && (
+              <Text style={styles.errorText}>
+                <MaterialCommunityIcons name="alert-circle" size={14} /> {errors.tipoLicenca}
+              </Text>
+            )}
+          </View>
+
+          {/* Status */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Status Inicial</Text>
+            <View style={styles.statusRow}>
+              {STATUS_OPTIONS.map((s) => (
+                <TouchableOpacity
+                  key={s.key}
+                  style={[styles.statusCard, status === s.key && { borderColor: s.color, backgroundColor: s.color + '12' }]}
+                  onPress={() => setStatus(s.key)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.statusDot, { backgroundColor: status === s.key ? s.color : Colors.textDisabled }]} />
+                  <Text style={[styles.statusLabel, status === s.key && { color: s.color, fontWeight: '700' }]}>
+                    {s.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Custo + Validade */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Custo e Validade</Text>
+
+            {/* Custo */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>Custo da Licença (R$)</Text>
+              <View style={styles.fieldRow}>
+                <MaterialCommunityIcons name="currency-brl" size={20} color={Colors.textSecondary} />
+                <TextInput
+                  style={styles.fieldInput}
+                  value={custo ? `R$ ${custo}` : ''}
+                  onChangeText={formatCusto}
+                  placeholder="R$ 0,00"
+                  placeholderTextColor={Colors.textDisabled}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            {/* Data de vencimento */}
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.8}>
+              <View pointerEvents="none">
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>
+                    Data de Vencimento <Text style={{ color: Colors.error }}>*</Text>
+                  </Text>
+                  <View style={[styles.fieldRow, errors.dataVencimento && styles.fieldRowError]}>
+                    <MaterialCommunityIcons
+                      name="calendar-outline"
+                      size={20}
+                      color={errors.dataVencimento ? Colors.error : Colors.textSecondary}
+                    />
+                    <Text style={[styles.fieldInput, !dataVencimento && { color: Colors.textDisabled }]}>
+                      {dataVencimento
+                        ? dataVencimento.split('-').reverse().join('/')
+                        : 'Selecione a data...'}
+                    </Text>
+                  </View>
+                  {errors.dataVencimento && (
+                    <Text style={styles.errorText}>
+                      <MaterialCommunityIcons name="alert-circle" size={14} /> {errors.dataVencimento}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={dataVencimento ? new Date(dataVencimento + 'T12:00:00Z') : new Date()}
+                mode="date"
+                display="default"
+                onChange={onChangeDate}
+                minimumDate={new Date()}
+              />
+            )}
+          </View>
+
+          {/* Anexo do documento */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Documento / Licença</Text>
+            {anexoUri ? (
+              <View style={styles.anexoContainer}>
+                <Image source={{ uri: anexoUri }} style={styles.anexoPreview} />
+                <TouchableOpacity style={styles.anexoRemoveBtn} onPress={() => setAnexoUri(null)}>
+                  <MaterialCommunityIcons name="delete" size={24} color={Colors.error} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.anexoBtn} onPress={abrirCamera} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="camera-plus" size={28} color={Colors.primary} />
+                <Text style={styles.anexoBtnText}>Fotografar Documento</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Botão salvar */}
+          <TouchableOpacity style={styles.submitBtn} onPress={handleSalvar} activeOpacity={0.85}>
+            <LinearGradient
+              colors={[Colors.primary, Colors.secondary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.submitGradient}
+            >
+              <MaterialCommunityIcons name="content-save-outline" size={24} color="#fff" />
+              <Text style={styles.submitText}>Cadastrar Licença</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      {/* Modal de seleção de tipo */}
+      <Modal visible={showTipoModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowTipoModal(false)}>
+        <View style={tipoModalStyles.container}>
+          <View style={tipoModalStyles.header}>
+            <Text style={tipoModalStyles.title}>Selecione o Tipo</Text>
+            <TouchableOpacity onPress={() => setShowTipoModal(false)}>
+              <MaterialCommunityIcons name="close" size={26} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={TIPOS_LICENCA}
+            keyExtractor={(item) => item.key}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[tipoModalStyles.item, tipoLicenca === item.key && tipoModalStyles.itemSelected]}
+                onPress={() => { setTipoLicenca(item.key); setShowTipoModal(false); }}
+                activeOpacity={0.75}
+              >
+                <View style={[tipoModalStyles.itemIcon, tipoLicenca === item.key && tipoModalStyles.itemIconSelected]}>
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={22}
+                    color={tipoLicenca === item.key ? Colors.primary : Colors.textSecondary}
+                  />
+                </View>
+                <Text style={[tipoModalStyles.itemLabel, tipoLicenca === item.key && tipoModalStyles.itemLabelSelected]}>
+                  {item.label}
+                </Text>
+                {tipoLicenca === item.key && (
+                  <MaterialCommunityIcons name="check-circle" size={20} color={Colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+      </Modal>
+
+      {/* Camera Modal */}
+      <Modal visible={isCameraOpen} animationType="slide" onRequestClose={() => setIsCameraOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <CameraView
+            style={{ flex: 1 }}
+            facing="back"
+            ref={(ref) => setCameraRef(ref)}
+          >
+            <View style={styles.cameraControls}>
+              <TouchableOpacity style={styles.cameraCloseBtn} onPress={() => setIsCameraOpen(false)}>
+                <MaterialCommunityIcons name="close" size={30} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cameraCaptureBtn} onPress={tirarFoto}>
+                <View style={styles.cameraCaptureBtnInner} />
+              </TouchableOpacity>
+              <View style={{ width: 60 }} />
+            </View>
+          </CameraView>
+        </View>
+      </Modal>
+    </KeyboardAvoidingView>
+  );
+}
+
+const tipoModalStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    paddingTop: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.divider,
+    backgroundColor: Colors.surface,
+  },
+  title: { ...Typography.h3, color: Colors.textPrimary },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    gap: Spacing.md,
+  },
+  itemSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '08',
+  },
+  itemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  itemIconSelected: { backgroundColor: Colors.primary + '18' },
+  itemLabel: {
+    flex: 1,
+    ...Typography.body2,
+    color: Colors.textPrimary,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  itemLabelSelected: { color: Colors.primary, fontWeight: '700' },
+});
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    paddingTop: 52,
+    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+  },
+  backBtn: { marginBottom: Spacing.sm },
+  headerTitle: { ...Typography.h2, color: '#fff', letterSpacing: -0.5 },
+  headerSubtitle: { ...Typography.body2, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: Spacing.md, paddingBottom: 100 },
+  section: { marginBottom: Spacing.lg },
+  sectionTitle: { ...Typography.h4, color: Colors.textPrimary, marginBottom: Spacing.md },
+
+  // Tipo selector
+  tipoSelector: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tipoSelectorError: { borderColor: Colors.error, backgroundColor: '#FFF5F5' },
+  tipoSelectorContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  tipoSelectorIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.xs,
+    backgroundColor: Colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipoSelectorText: { flex: 1, ...Typography.body1, color: Colors.textPrimary, fontWeight: '600' },
+  tipoSelectorPlaceholder: { flex: 1, ...Typography.body1, color: Colors.textDisabled },
+
+  // Status
+  statusRow: { flexDirection: 'row', gap: Spacing.sm },
+  statusCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+  },
+  statusDot: { width: 10, height: 10, borderRadius: 5 },
+  statusLabel: { ...Typography.button, color: Colors.textSecondary },
+
+  // Fields
+  fieldContainer: { marginBottom: Spacing.md },
+  fieldLabel: { ...Typography.label, color: Colors.textSecondary, marginBottom: 8, fontWeight: '600' },
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 12,
+    gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  fieldRowError: { borderColor: Colors.error, backgroundColor: '#FFF5F5' },
+  fieldInput: {
+    flex: 1,
+    ...Typography.body1,
+    color: Colors.textPrimary,
+    paddingVertical: 0,
+    fontSize: 16,
+  },
+  errorText: { ...Typography.caption, color: Colors.error, marginTop: 6, fontWeight: '500' },
+
+  // Anexo
+  anexoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.primaryLight + '20',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    borderColor: Colors.primaryLight,
+    borderStyle: 'dashed',
+  },
+  anexoBtnText: { ...Typography.button, color: Colors.primary },
+  anexoContainer: { position: 'relative', width: '100%', height: 200, borderRadius: BorderRadius.md, overflow: 'hidden' },
+  anexoPreview: { width: '100%', height: '100%', resizeMode: 'cover' },
+  anexoRemoveBtn: { position: 'absolute', top: 10, right: 10, backgroundColor: '#fff', padding: 8, borderRadius: 20, elevation: 2 },
+
+  // Submit
+  submitBtn: {
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+    marginTop: Spacing.md,
+  },
+  submitGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    gap: Spacing.sm,
+  },
+  submitText: { ...Typography.button, color: '#fff', fontSize: 18, fontWeight: '700' },
+
+  // Camera
+  cameraControls: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    padding: 30,
+    paddingBottom: 50,
+  },
+  cameraCloseBtn: {
+    width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  cameraCaptureBtn: {
+    width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  cameraCaptureBtnInner: {
+    width: 54, height: 54, borderRadius: 27, backgroundColor: '#fff',
+  },
+});

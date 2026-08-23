@@ -155,3 +155,4 @@ Quando uma licença é editada, renovada ou excluída, o aplicativo limpa automa
 
 Para compreender melhor a modelagem técnica do projeto, as stores do Zustand e a lógica detalhada de notificações locais, consulte a documentação técnica avançada em:
 👉 [**docs/ARCHITECTURE.md**](file:///home/luann8/GitHub/sigs-app/docs/ARCHITECTURE.md) (com especificações de API e diagramas de fluxo de dados).
+# sigs-apps-online

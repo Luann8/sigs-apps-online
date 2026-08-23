@@ -61,6 +61,61 @@ export const Colors = {
   calActive: '#2E7D32',
 };
 
+export const DarkColors = {
+  primary: '#4DB6AC',
+  primaryLight: '#80CBC4',
+  primaryDark: '#00796B',
+  secondary: '#42A5F5',
+  secondaryLight: '#64B5F6',
+  secondaryDark: '#1E88E5',
+
+  gradientStart: '#00796B',
+  gradientEnd: '#1565C0',
+
+  success: '#66BB6A',
+  successLight: '#81C784',
+  successBg: '#1B3A1D',
+  warning: '#FFA726',
+  warningLight: '#FFB74D',
+  warningBg: '#3E2A0F',
+  error: '#EF5350',
+  errorLight: '#E57373',
+  errorBg: '#3E1517',
+  info: '#29B6F6',
+  infoBg: '#0D2A3A',
+
+  background: '#121212',
+  surface: '#1E1E1E',
+  surfaceVariant: '#2C2C2C',
+  surfaceElevated: '#262626',
+  border: '#3A3A3A',
+  divider: '#2E2E2E',
+
+  textPrimary: '#E0E0E0',
+  textSecondary: '#B0B0B0',
+  textTertiary: '#808080',
+  textDisabled: '#555555',
+  textOnPrimary: '#FFFFFF',
+
+  sanitaria: '#42A5F5',
+  sanitariaBg: '#1A2E3E',
+  veterinaria: '#AB47BC',
+  veterinariaBg: '#2E1A33',
+
+  shadow: 'rgba(0, 0, 0, 0.30)',
+  shadowMd: 'rgba(0, 0, 0, 0.40)',
+  overlay: 'rgba(0, 0, 0, 0.60)',
+  tabBar: '#1E1E1E',
+  tabBarActive: '#4DB6AC',
+  tabBarInactive: '#666666',
+
+  calToday: '#4DB6AC',
+  calSelected: '#4DB6AC',
+  calExpiring: '#FFA726',
+  calExpired: '#EF5350',
+  calActive: '#66BB6A',
+};
+
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -91,6 +146,22 @@ export const Typography = {
   label: { fontSize: 12, fontWeight: '600', letterSpacing: 0.3, lineHeight: 16 },
   button: { fontSize: 15, fontWeight: '700', letterSpacing: 0.2 },
   overline: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' },
+
+  fontSizes: {
+    xs: 12,
+    sm: 13,
+    md: 14,
+    lg: 16,
+    xl: 18,
+    xxl: 22,
+  },
+  fontWeights: {
+    regular: '400',
+    medium: '500',
+    semibold: '600',
+    bold: '700',
+    extrabold: '800',
+  },
 };
 
 export const Shadows = {
