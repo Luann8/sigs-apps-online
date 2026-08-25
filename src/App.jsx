@@ -17,7 +17,8 @@ import { useAuthStore } from './store/authStore';
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  if (!isAuthenticated) {
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated || !user || user.ativo === false || user.status === 'pendente' || user.status === 'bloqueado') {
     return <Navigate to="/login" replace />;
   }
   return children;

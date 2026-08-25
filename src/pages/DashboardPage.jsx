@@ -16,16 +16,22 @@ import {
   CalendarPlus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import { CalendarSyncModal } from '../components/modals/CalendarSyncModal';
+import { toast } from 'sonner';
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const rawLicencas = useQuery(api.licencas.listAll) ?? [];
   const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const { estabelecimentoAtual } = useEstabelecimentosStore();
 
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [selectedSyncLicenca, setSelectedSyncLicenca] = useState(null);
+  const [solicitou, setSolicitou] = useState(user?.solicitouLeitura || false);
+
+  const isRestrito = user && !user.podeLerTodos && user.role !== 'Administrador' && user.email !== 'fiscal@sigs.gov.br';
 
   const estMap = useMemo(() => {
     const map = new Map();

@@ -41,8 +41,7 @@ export const getById = query({
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
-    const licencas = await ctx.db.query("licencas").collect();
-    return licencas;
+    return await ctx.db.query("licencas").collect();
   },
 });
 

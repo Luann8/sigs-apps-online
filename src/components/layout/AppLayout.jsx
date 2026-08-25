@@ -8,9 +8,11 @@ import { getDaysUntilExpiry } from '../../utils/formatters';
 import { CadastroModal } from '../modals/CadastroModal';
 import { EstablishmentPickerModal } from '../modals/EstablishmentPickerModal';
 import { LayoutDashboard, Building2, FileCheck2, Calendar, Bell, Settings, X, Plus } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 import { Toaster } from 'sonner';
 
 export function AppLayout() {
+  const { user } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cadastroOpen, setCadastroOpen] = useState(false);
   const [estPickerOpen, setEstPickerOpen] = useState(false);

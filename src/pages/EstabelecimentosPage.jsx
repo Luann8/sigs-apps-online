@@ -15,9 +15,11 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { EstablishmentPickerModal } from '../components/modals/EstablishmentPickerModal';
+import { useAuthStore } from '../store/authStore';
 import { toast } from 'sonner';
 
 export function EstabelecimentosPage() {
+  const { user } = useAuthStore();
   const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const removeMutation = useMutation(api.estabelecimentos.remove);
 

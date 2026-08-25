@@ -16,6 +16,24 @@ export const useAuthStore = create(
         return true;
       },
 
+      loginAsGuest: () => {
+        set({
+          isAuthenticated: true,
+          user: {
+            id: 'convidado',
+            name: 'Visitante (Acesso Restrito)',
+            email: 'visitante@externo',
+            role: 'Visitante',
+            status: 'visitante',
+            ativo: true,
+            podeLerTodos: false,
+            podeEditar: false,
+            avatar: 'https://ui-avatars.com/api/?name=Visitante&background=64748B&color=fff&size=150',
+          },
+        });
+        return true;
+      },
+
       updateProfile: (updatedData) => {
         const currentUser = get().user || {};
         set({

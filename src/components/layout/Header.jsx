@@ -9,9 +9,9 @@ import { toast } from 'sonner';
 
 export function Header({ alertCount = 0, onOpenMobileMenu, onOpenEstablishmentPicker, onOpenCadastro }) {
   const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
   const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const { estabelecimentoAtual, setEstabelecimentoAtual } = useEstabelecimentosStore();
-  const { user, logout } = useAuthStore();
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -22,6 +22,8 @@ export function Header({ alertCount = 0, onOpenMobileMenu, onOpenEstablishmentPi
     toast.info('Sessão encerrada com sucesso.');
     navigate('/login');
   };
+
+  const isRestrito = user && !user.podeLerTodos && user.role !== 'Administrador' && user.email !== 'fiscal@sigs.gov.br';
 
   return (
     <header className="h-16 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors">
@@ -51,6 +53,12 @@ export function Header({ alertCount = 0, onOpenMobileMenu, onOpenEstablishmentPi
             </div>
             <ChevronDown className="w-4 h-4 text-gray-400 ml-0.5 flex-shrink-0" />
           </button>
+        </div>
+
+        {/* Status Convex */}
+        <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold" title="Banco de dados Convex sincronizado">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Convex Cloud Ativo</span>
         </div>
       </div>
 

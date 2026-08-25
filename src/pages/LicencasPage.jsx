@@ -27,10 +27,12 @@ import { useNavigate } from 'react-router-dom';
 import { CadastroModal } from '../components/modals/CadastroModal';
 import { CalendarSyncModal } from '../components/modals/CalendarSyncModal';
 import { downloadCSV } from '../utils/backupHelper';
+import { useAuthStore } from '../store/authStore';
 import { toast } from 'sonner';
 
 export function LicencasPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const rawLicencas = useQuery(api.licencas.listAll) ?? [];
   const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const removeMutation = useMutation(api.licencas.remove);
