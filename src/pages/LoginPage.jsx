@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { ShieldAlert, Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, User } from 'lucide-react';
 import { toast } from 'sonner';
+import sigsLogo from '../../assets/splash-icon.png';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -136,9 +137,11 @@ export function LoginPage() {
       <div className="max-w-md w-full space-y-6">
         {/* Header Simples */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-[#00796B] flex items-center justify-center text-white mx-auto shadow-md">
-            <ShieldAlert className="w-8 h-8 text-white" />
-          </div>
+          <img
+            src={sigsLogo}
+            alt="SIGS"
+            className="w-24 h-24 object-contain mx-auto"
+          />
           <h1 className="font-extrabold text-2xl text-gray-900 dark:text-white">SIGS Web</h1>
           <p className="text-xs text-gray-500 dark:text-zinc-400">
             Sistema de Gestão Sanitária
@@ -230,16 +233,7 @@ export function LoginPage() {
                 <span>{loading ? 'Entrando...' : 'Entrar'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('fiscal@sigs.gov.br');
-                  setPassword('123456');
-                }}
-                className="w-full text-center text-xs text-[#00796B] dark:text-teal-400 font-semibold hover:underline pt-1 cursor-pointer"
-              >
-                Preencher dados de teste (fiscal@sigs.gov.br)
-              </button>
+
             </form>
           )}
 

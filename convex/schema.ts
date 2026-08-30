@@ -18,7 +18,22 @@ export default defineSchema({
     estabelecimentoId: v.id("estabelecimentos"),
     codigo: v.string(),
     tipoLicenca: v.string(),
+    // status: campo legado mantido para retrocompatibilidade
     status: v.string(),
+    // situacao: novo campo — estado do ciclo de vida do documento
+    // Valores possíveis: em_dia | a_vencer | renovacao_protocolada | vencida | nunca_obtido | suspensa
+    situacao: v.optional(
+      v.union(
+        v.literal("em_dia"),
+        v.literal("a_vencer"),
+        v.literal("renovacao_protocolada"),
+        v.literal("vencida"),
+        v.literal("nunca_obtido"),
+        v.literal("suspensa"),
+      )
+    ),
+    // protocoloRenovacao: número do protocolo protocolado junto ao órgão
+    protocoloRenovacao: v.optional(v.string()),
     dataEmissao: v.string(),
     dataVencimento: v.string(),
     anexoUri: v.optional(v.string()),

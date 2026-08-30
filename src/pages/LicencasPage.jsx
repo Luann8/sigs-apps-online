@@ -9,6 +9,7 @@ import {
   getDaysUntilExpiry,
   formatCNPJ,
 } from '../utils/formatters';
+import { calcularRisco, COR_CLASSES } from '../utils/licencaRisco';
 import {
   FileText,
   Plus,
@@ -214,9 +215,8 @@ export function LicencasPage() {
                 filteredLicencas.map((lic) => {
                   const est = estMap.get(lic.estabelecimentoId);
                   const config = getTipoLicencaConfig(lic.tipoLicenca);
-                  const days = getDaysUntilExpiry(lic.dataVencimento);
-                  const isExpired = days < 0;
-                  const isSoon = days <= 30 && days >= 0;
+                  const risco = calcularRisco(lic);
+                  const cls = COR_CLASSES[risco.cor];
 
                   return (
                     <tr
@@ -256,16 +256,11 @@ export function LicencasPage() {
 
                       <td className="py-4 px-6">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            isExpired
-                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                              : isSoon
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${cls.badge}`}
                         >
-                          {isExpired ? 'Vencida' : isSoon ? `Vence em ${days}d` : 'Ativa'}
+                          {risco.corLabel}
                         </span>
+                        <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-0.5">{risco.situacaoLabel}</p>
                       </td>
 
                       <td className="py-4 px-6 font-semibold text-gray-700 dark:text-zinc-300">

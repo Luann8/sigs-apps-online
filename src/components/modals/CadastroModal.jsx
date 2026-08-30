@@ -16,7 +16,8 @@ export function CadastroModal({ isOpen, onClose, editLicenca = null }) {
 
   const [estabelecimentoId, setEstabelecimentoId] = useState('');
   const [tipoLicenca, setTipoLicenca] = useState(TIPOS_LICENCA[0].key);
-  const [status, setStatus] = useState('ativa');
+  const [situacao, setSituacao] = useState('em_dia');
+  const [protocoloRenovacao, setProtocoloRenovacao] = useState('');
   const [dataEmissao, setDataEmissao] = useState(new Date().toISOString().slice(0, 10));
   const [dataVencimento, setDataVencimento] = useState(
     new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -30,7 +31,10 @@ export function CadastroModal({ isOpen, onClose, editLicenca = null }) {
     if (editLicenca) {
       setEstabelecimentoId(editLicenca.estabelecimentoId);
       setTipoLicenca(editLicenca.tipoLicenca);
-      setStatus(editLicenca.status || 'ativa');
+      // Resolve a situação: usa campo novo ou mapeia o legado
+      const legadoMap = { ativa: 'em_dia', pendente: 'a_vencer', vencida: 'vencida', suspensa: 'suspensa' };
+      setSituacao(editLicenca.situacao ?? legadoMap[editLicenca.status] ?? 'em_dia');
+      setProtocoloRenovacao(editLicenca.protocoloRenovacao || '');
       setDataEmissao(editLicenca.dataEmissao || new Date().toISOString().slice(0, 10));
       setDataVencimento(editLicenca.dataVencimento || '');
       setCusto(editLicenca.custo ? String(editLicenca.custo) : '');
@@ -63,11 +67,16 @@ export function CadastroModal({ isOpen, onClose, editLicenca = null }) {
 
     setIsSubmitting(true);
     try {
+      // Mantém status legado sincronizado com a nova situação para retrocompatibilidade
+      const statusLegado = { em_dia: 'ativa', a_vencer: 'pendente', renovacao_protocolada: 'ativa',
+                             vencida: 'vencida', nunca_obtido: 'vencida', suspensa: 'suspensa' }[situacao] ?? 'ativa';
       if (editLicenca) {
         await updateLicencaMutation({
           id: editLicenca._id,
           tipoLicenca,
-          status,
+          status: statusLegado,
+          situacao,
+          protocoloRenovacao: protocoloRenovacao || undefined,
           dataEmissao,
           dataVencimento,
           anexoUri: anexoUri || undefined,
@@ -80,7 +89,9 @@ export function CadastroModal({ isOpen, onClose, editLicenca = null }) {
           estabelecimentoId,
           codigo: nextCodigo,
           tipoLicenca,
-          status,
+          status: statusLegado,
+          situacao,
+          protocoloRenovacao: protocoloRenovacao || undefined,
           dataEmissao,
           dataVencimento,
           anexoUri: anexoUri || undefined,
@@ -153,20 +164,22 @@ export function CadastroModal({ isOpen, onClose, editLicenca = null }) {
             </select>
           </div>
 
-          {/* Status & Custo */}
+          {/* Situação do documento */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-zinc-400 mb-1">
-                Status *
+                Situação do Documento *
               </label>
               <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                value={situacao}
+                onChange={(e) => { setSituacao(e.target.value); if (e.target.value !== 'renovacao_protocolada') setProtocoloRenovacao(''); }}
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-[#00796B] focus:outline-none"
               >
-                <option value="ativa">Ativa</option>
-                <option value="pendente">Pendente</option>
+                <option value="em_dia">Em dia</option>
+                <option value="a_vencer">A vencer (&le;30 dias)</option>
+                <option value="renovacao_protocolada">Renovação protocolada</option>
                 <option value="vencida">Vencida</option>
+                <option value="nunca_obtido">Nunca obtido</option>
                 <option value="suspensa">Suspensa</option>
               </select>
             </div>
@@ -186,6 +199,25 @@ export function CadastroModal({ isOpen, onClose, editLicenca = null }) {
               />
             </div>
           </div>
+
+          {/* Número do protocolo de renovação (condicional) */}
+          {situacao === 'renovacao_protocolada' && (
+            <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30">
+              <label className="block text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1">
+                Nº do Protocolo de Renovação *
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: SEI-RJ 2024/00123456"
+                value={protocoloRenovacao}
+                onChange={(e) => setProtocoloRenovacao(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                Esse protocolo comprova a renovação tempestiva. O documento fica amarelo (atenção) em vez de vermelho.
+              </p>
+            </div>
+          )}
 
           {/* Datas */}
           <div className="grid grid-cols-2 gap-4">

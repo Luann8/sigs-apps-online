@@ -8,6 +8,7 @@ import {
   getDaysUntilExpiry,
   formatCNPJ,
 } from '../utils/formatters';
+import { calcularRisco, COR_CLASSES } from '../utils/licencaRisco';
 import {
   ArrowLeft,
   FileText,
@@ -24,6 +25,9 @@ import {
   Clock,
   HardDrive,
   CalendarPlus,
+  Scale,
+  AlertCircle,
+  Hash,
 } from 'lucide-react';
 import { InspecaoModal } from '../components/modals/InspecaoModal';
 import { CalendarSyncModal } from '../components/modals/CalendarSyncModal';
@@ -59,9 +63,8 @@ export function DetalheLicencaPage() {
   }
 
   const config = getTipoLicencaConfig(licenca.tipoLicenca);
-  const days = getDaysUntilExpiry(licenca.dataVencimento);
-  const isExpired = days < 0;
-  const isSoon = days <= 30 && days >= 0;
+  const risco = calcularRisco(licenca);
+  const cls = COR_CLASSES[risco.cor];
 
   const isGoogleDrive = licenca.anexoUri && licenca.anexoUri.includes('drive.google.com');
 
@@ -99,15 +102,9 @@ export function DetalheLicencaPage() {
                   {config.label}
                 </h1>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    isExpired
-                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                      : isSoon
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                  }`}
+                  className={`px-3 py-1 rounded-full text-xs font-bold ${cls.badge}`}
                 >
-                  {isExpired ? 'Vencida' : isSoon ? `Vence em ${days}d` : 'Ativa'}
+                  {risco.corLabel} — {risco.situacaoLabel}
                 </span>
               </div>
               <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
@@ -173,6 +170,51 @@ export function DetalheLicencaPage() {
               {licenca.custo ? `R$ ${licenca.custo.toFixed(2)}` : 'Isento / Não informado'}
             </p>
           </div>
+        </div>
+
+        {/* Protocolo de renovação (se houver) */}
+        {licenca.protocoloRenovacao && (
+          <div className="flex items-start space-x-3 p-4 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30">
+            <Hash className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Protocolo de Renovação</p>
+              <p className="text-sm font-bold text-amber-900 dark:text-amber-200 mt-0.5">{licenca.protocoloRenovacao}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                Renovação protocolada tempestivamente. O documento está regular enquanto aguarda o órgão.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Classificação de Risco */}
+        <div className={`p-4 rounded-xl border ${cls.border} ${cls.bg}`}>
+          <div className="flex items-center space-x-2 mb-3">
+            <Scale className={`w-4 h-4 ${cls.icon}`} />
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400">Classificação de Risco</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-zinc-400">Peso do documento</p>
+              <p className={`text-sm font-bold mt-0.5 capitalize ${cls.icon}`}>
+                {risco.peso === 'alto' ? '🔴 Alto' : risco.peso === 'medio' ? '🟠 Médio' : '⚪ Baixo'}
+              </p>
+            </div>
+
+            <div className="sm:col-span-2">
+              <p className="text-xs text-gray-500 dark:text-zinc-400">Fundamento legal</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">{risco.lei}</p>
+            </div>
+          </div>
+
+          {risco.presumido && (
+            <div className="mt-3 flex items-start space-x-2 p-2.5 rounded-lg bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-900/50">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                <strong>Classificação presumida:</strong> o artigo exato desta norma ainda não foi localizado. O peso atribuído é uma interpretação do regime sancionatório geral; pode ser revisado quando o dispositivo específico for identificado.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

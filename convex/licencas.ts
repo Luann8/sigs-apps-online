@@ -58,6 +58,17 @@ export const create = mutation({
     codigo: v.string(),
     tipoLicenca: v.string(),
     status: v.string(),
+    situacao: v.optional(
+      v.union(
+        v.literal("em_dia"),
+        v.literal("a_vencer"),
+        v.literal("renovacao_protocolada"),
+        v.literal("vencida"),
+        v.literal("nunca_obtido"),
+        v.literal("suspensa"),
+      )
+    ),
+    protocoloRenovacao: v.optional(v.string()),
     dataEmissao: v.string(),
     dataVencimento: v.string(),
     anexoUri: v.optional(v.string()),
@@ -78,6 +89,17 @@ export const add = mutation({
     codigo: v.string(),
     tipoLicenca: v.string(),
     status: v.string(),
+    situacao: v.optional(
+      v.union(
+        v.literal("em_dia"),
+        v.literal("a_vencer"),
+        v.literal("renovacao_protocolada"),
+        v.literal("vencida"),
+        v.literal("nunca_obtido"),
+        v.literal("suspensa"),
+      )
+    ),
+    protocoloRenovacao: v.optional(v.string()),
     dataEmissao: v.string(),
     dataVencimento: v.string(),
     anexoUri: v.optional(v.string()),
@@ -98,6 +120,17 @@ export const update = mutation({
     codigo: v.optional(v.string()),
     tipoLicenca: v.optional(v.string()),
     status: v.optional(v.string()),
+    situacao: v.optional(
+      v.union(
+        v.literal("em_dia"),
+        v.literal("a_vencer"),
+        v.literal("renovacao_protocolada"),
+        v.literal("vencida"),
+        v.literal("nunca_obtido"),
+        v.literal("suspensa"),
+      )
+    ),
+    protocoloRenovacao: v.optional(v.string()),
     dataEmissao: v.optional(v.string()),
     dataVencimento: v.optional(v.string()),
     anexoUri: v.optional(v.string()),
