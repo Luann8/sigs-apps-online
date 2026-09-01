@@ -49,7 +49,6 @@ export function EstablishmentPickerModal({ isOpen, onClose }) {
         email: email || undefined,
         crmv: crmv || undefined,
         tipo,
-        userId: 'default_user',
       });
       setEstabelecimentoAtual(newId);
       toast.success('Novo estabelecimento cadastrado e selecionado!');

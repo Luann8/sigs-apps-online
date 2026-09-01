@@ -30,7 +30,6 @@ export function InspecaoModal({ isOpen, onClose, licencaId }) {
         resultado,
         fiscal,
         observacoes: observacoes || undefined,
-        userId: 'default_user',
       });
       toast.success('Inspeção registrada com sucesso!');
       onClose();
