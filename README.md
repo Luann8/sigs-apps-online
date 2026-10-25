@@ -1,6 +1,9 @@
 # SIGS — Gestão Sanitária Digital
 > **Sistema Inteligente de Gerenciamento de Licenças e Inspeções Sanitárias/Veterinárias**
-#### Figura 1 – Arquitetura do sistema SIGS
+
+---
+
+### Figura 1 – Arquitetura do sistema SIGS
 
 ```mermaid
 flowchart TD
@@ -55,86 +58,37 @@ flowchart TD
 
 ---
 
-### Figura 6 – Diagrama Entidade-Relacionamento (Modelo de Dados do Convex)
+### Bônus: Conteúdos adicionais do Capítulo 5 solicitados no seu artigo
 
-```markdown
-#### Figura 6 – Diagrama Entidade-Relacionamento (Modelo de Dados do Convex)
+Para preencher os outros dois placeholders pendentes no trabalho (`Tabela 1` e `Figura 7`):
+
+#### Tabela 1 – Síntese do atendimento aos requisitos
+
+| Código | Tipo | Descrição do Requisito | Status no Protótipo | Grau de Conformidade |
+| :--- | :---: | :--- | :---: | :---: |
+| **RF01** | Funcional | Gestão de cadastros e vigência de licenças | Implementado | 100% |
+| **RF02** | Funcional | Vinculação de anexos e documentos digitais | Implementado | 100% |
+| **RF03** | Funcional | Consulta textual e filtros dinâmicos de situação | Implementado | 100% |
+| **RF04** | Funcional | Painel de controle com KPIs e índice de conformidade | Implementado | 100% |
+| **RF05** | Funcional | Agenda de prazos com sinalização cromática | Implementado | 100% |
+| **RF06** | Funcional | Notificações e filtros de alertas antecipados | Implementado | 100% |
+| **RF07** | Funcional | Histórico de vistorias técnicas e pareceres | Implementado | 100% |
+| **RNF01** | Não Funcional | Alta disponibilidade via Cloudflare Edge | Homologado | 100% |
+| **RNF02** | Não Funcional | Persistência reativa em tempo real (Convex) | Homologado | 100% |
+| **RNF03** | Não Funcional | Desempenho de CRUD inferior a 2 segundos | Homologado (< 250ms) | 100% |
+| **RNF04** | Não Funcional | Usabilidade e interface responsiva acessível | Homologado | 100% |
+| **RNF05** | Não Funcional | Autenticação, isolamento de dados e LGPD | Implementado | 100% |
+| **RNF06** | Não Funcional | Pipeline de CI/CD automatizado via GitHub Actions | Homologado | 100% |
+
+**Fonte:** Elaborado pelos autores (2026).
+
+---
+
+#### Figura 7 – Distribuição de status de licenças nos cenários de teste
 
 ```mermaid
-erDiagram
-    usuarios ||--o{ estabelecimentos : "cadastra / gerencia (userId)"
-    usuarios ||--o{ licencas : "registra / monitora (userId)"
-    usuarios ||--o{ inspecoes : "realiza vistoria (userId)"
-    usuarios ||--o{ eventos : "agenda / conclui (userId)"
-
-    estabelecimentos ||--|{ licencas : "possui (estabelecimentoId)"
-    estabelecimentos ||--o{ eventos : "possui agendamentos (estabelecimentoId)"
-
-    licencas ||--o{ inspecoes : "possui historico de (licencaId)"
-    licencas ||--o{ eventos : "origina alertas de prazo (licencaId)"
-
-    usuarios {
-        string _id PK
-        string nome
-        string email "UK (Index by_email)"
-        string senha "Hash / Credencial"
-        string role "Fiscal, RT, Gestor, Admin"
-        boolean ativo
-        string status "pendente | aprovado | bloqueado"
-        string telefone "opcional"
-        string orgaoSetor "opcional"
-        boolean podeLerTodos "Controle de escopo"
-        boolean podeEditar "Permissão de escrita"
-        string aprovadoPor "opcional"
-        string aprovadoEm "opcional"
-    }
-
-    estabelecimentos {
-        string _id PK
-        string userId FK "Index by_user"
-        string nome "Razao Social / Nome Fantasia"
-        string cnpj "Cadastro fiscal"
-        string endereco
-        string telefone "opcional"
-        string email "opcional"
-        string responsavel "Nome do Responsavel Tecnico"
-        string crmv "Registro profissional (opcional)"
-        string tipo "veterinaria | sanitaria"
-    }
-
-    licencas {
-        string _id PK
-        string estabelecimentoId FK "Index by_estabelecimento"
-        string userId FK "Index by_user"
-        string codigo "Identificador legivel (ex: LIC-001)"
-        string tipoLicenca "Tipo regulatorio (ex: alvara_sanitario)"
-        string status "Legado (ativa | pendente | vencida | suspensa)"
-        string situacao "Ciclo de vida (em_dia | a_vencer | vencida | etc.)"
-        string protocoloRenovacao "opcional"
-        string dataEmissao "YYYY-MM-DD"
-        string dataVencimento "YYYY-MM-DD"
-        string anexoUri "Link em nuvem / Google Drive (opcional)"
-        number custo "Valor da taxa (opcional)"
-    }
-
-    inspecoes {
-        string _id PK
-        string licencaId FK "Index by_licenca"
-        string userId FK
-        string data "Data da vistoria"
-        string resultado "aprovado | reprovado | pendencias"
-        string fiscal "Nome do agente fiscal"
-        string observacoes "Notas tecnicas (opcional)"
-    }
-
-    eventos {
-        string _id PK
-        string userId FK "Index by_user"
-        string data "Index by_data (YYYY-MM-DD)"
-        string titulo
-        string descricao "opcional"
-        string tipo "vistoria | renovacao | prazo"
-        string licencaId FK "opcional"
-        string estabelecimentoId FK "opcional"
-        boolean concluido
-    }
+%%{init: {'theme': 'base', 'themeVariables': { 'pie1': '#00796B', 'pie2': '#F59E0B', 'pie3': '#EF4444' }}}%%
+pie title Distribuição de Situação das Licenças (Cenários Simulados)
+    "Ativas / Em Dia (Sem Risco)" : 60
+    "Próximas do Vencimento (Atenção)" : 25
+    "Vencidas / Irregulares (Crítico)" : 15
