@@ -1,13 +1,15 @@
-# SIGS — Gestão Sanitária Digital
-> **Sistema Inteligente de Gerenciamento de Licenças e Inspeções Sanitárias/Veterinárias**
+O erro ocorreu porque os blocos de código estavam aninhados (um bloco de Markdown envolvendo o bloco do Mermaid), o que fez o leitor do GitHub interpretar o texto comum como se ainda fosse código do diagrama.
+
+Abaixo estão os diagramas separados, **prontos para copiar individualmente** (sem blocos aninhados):
 
 ---
 
-### Figura 1 – Arquitetura do sistema SIGS
+### Figura 1 – Arquitetura do Sistema SIGS
+
+Copie exatamente o bloco abaixo:
 
 ```mermaid
 flowchart TD
-    %% Estilos visuais
     classDef client fill:#E0F2F1,stroke:#00796B,stroke-width:2px,color:#004D40;
     classDef edge fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1;
     classDef backend fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#BF360C;
@@ -15,13 +17,13 @@ flowchart TD
 
     subgraph CI_CD ["Esteira de Integração e Deploy Contínuo (CI/CD)"]
         DEV["Desenvolvedor / Repositório Git"]
-        GHA["GitHub Actions Workflow\n(Lint, Testes Vitest & Build)"]
-        DEV -->|"git push (branch main)"| GHA
+        GHA["GitHub Actions Workflow<br/>(Lint, Testes Vitest & Build)"]
+        DEV --> GHA
     end
 
     subgraph EDGE_LAYER ["Camada de Borda & Distribuição (Cloudflare)"]
-        CF_PAGES["Cloudflare Pages / CDN Global\n(Distribuição estática de alta disponibilidade)"]
-        SPA_ROUTING["Roteamento SPA & Cache Edge\n(Low Latency)"]
+        CF_PAGES["Cloudflare Pages / CDN Global<br/>(Distribuição estática de alta disponibilidade)"]
+        SPA_ROUTING["Roteamento SPA & Cache Edge<br/>(Low Latency)"]
         CF_PAGES --- SPA_ROUTING
     end
 
@@ -38,57 +40,122 @@ flowchart TD
 
     subgraph BACKEND ["Camada de Backend Serverless & Dados (Convex Cloud)"]
         WS_GATEWAY["Gateway em Tempo Real (WebSocket / Subscriptions)"]
-        SERVERLESS_FN["Funções Serverless\n(Queries, Mutations & Validação de Acesso)"]
-        CONVEX_DB[("Banco de Dados Reativo Convex\n(Índices, Documentos & Tipagem TypeScript)")]
+        SERVERLESS_FN["Funções Serverless<br/>(Queries, Mutations & Validação de Acesso)"]
+        CONVEX_DB[("Banco de Dados Reativo Convex<br/>(Índices, Documentos & Tipagem TypeScript)")]
         
         WS_GATEWAY <--> SERVERLESS_FN
         SERVERLESS_FN <--> CONVEX_DB
     end
 
-    %% Conexões entre camadas
-    GHA -->|"Deploy Automatizado (Artifacts)"| CF_PAGES
-    CF_PAGES -->|"Serve Assets (HTML / JS / CSS)"| UI
-    CONVEX_CLIENT <-->|"Sincronização Bidirecional em Tempo Real"| WS_GATEWAY
+    GHA --> CF_PAGES
+    CF_PAGES --> UI
+    CONVEX_CLIENT <--> WS_GATEWAY
 
     class UI,ROUTER,STATE,CONVEX_CLIENT client;
     class CF_PAGES,SPA_ROUTING edge;
     class WS_GATEWAY,SERVERLESS_FN,CONVEX_DB backend;
     class DEV,GHA cicd;
-
-
----
-
-### Bônus: Conteúdos adicionais do Capítulo 5 solicitados no seu artigo
-
-Para preencher os outros dois placeholders pendentes no trabalho (`Tabela 1` e `Figura 7`):
-
-#### Tabela 1 – Síntese do atendimento aos requisitos
-
-| Código | Tipo | Descrição do Requisito | Status no Protótipo | Grau de Conformidade |
-| :--- | :---: | :--- | :---: | :---: |
-| **RF01** | Funcional | Gestão de cadastros e vigência de licenças | Implementado | 100% |
-| **RF02** | Funcional | Vinculação de anexos e documentos digitais | Implementado | 100% |
-| **RF03** | Funcional | Consulta textual e filtros dinâmicos de situação | Implementado | 100% |
-| **RF04** | Funcional | Painel de controle com KPIs e índice de conformidade | Implementado | 100% |
-| **RF05** | Funcional | Agenda de prazos com sinalização cromática | Implementado | 100% |
-| **RF06** | Funcional | Notificações e filtros de alertas antecipados | Implementado | 100% |
-| **RF07** | Funcional | Histórico de vistorias técnicas e pareceres | Implementado | 100% |
-| **RNF01** | Não Funcional | Alta disponibilidade via Cloudflare Edge | Homologado | 100% |
-| **RNF02** | Não Funcional | Persistência reativa em tempo real (Convex) | Homologado | 100% |
-| **RNF03** | Não Funcional | Desempenho de CRUD inferior a 2 segundos | Homologado (< 250ms) | 100% |
-| **RNF04** | Não Funcional | Usabilidade e interface responsiva acessível | Homologado | 100% |
-| **RNF05** | Não Funcional | Autenticação, isolamento de dados e LGPD | Implementado | 100% |
-| **RNF06** | Não Funcional | Pipeline de CI/CD automatizado via GitHub Actions | Homologado | 100% |
+```
 
 **Fonte:** Elaborado pelos autores (2026).
 
 ---
 
-#### Figura 7 – Distribuição de status de licenças nos cenários de teste
+### Figura 6 – Diagrama Entidade-Relacionamento (Modelo de Dados do Convex)
+
+Copie exatamente o bloco abaixo:
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'pie1': '#00796B', 'pie2': '#F59E0B', 'pie3': '#EF4444' }}}%%
+erDiagram
+    usuarios ||--o{ estabelecimentos : "cadastra"
+    usuarios ||--o{ licencas : "registra"
+    usuarios ||--o{ inspecoes : "vistoria"
+    usuarios ||--o{ eventos : "agenda"
+
+    estabelecimentos ||--|{ licencas : "possui"
+    estabelecimentos ||--o{ eventos : "agendamentos"
+
+    licencas ||--o{ inspecoes : "historico"
+    licencas ||--o{ eventos : "alertas"
+
+    usuarios {
+        string _id PK
+        string nome
+        string email
+        string senha
+        string role
+        boolean ativo
+        string status
+        string telefone
+        string orgaoSetor
+        boolean podeLerTodos
+        boolean podeEditar
+    }
+
+    estabelecimentos {
+        string _id PK
+        string userId FK
+        string nome
+        string cnpj
+        string endereco
+        string telefone
+        string email
+        string responsavel
+        string crmv
+        string tipo
+    }
+
+    licencas {
+        string _id PK
+        string estabelecimentoId FK
+        string userId FK
+        string codigo
+        string tipoLicenca
+        string status
+        string situacao
+        string protocoloRenovacao
+        string dataEmissao
+        string dataVencimento
+        string anexoUri
+        number custo
+    }
+
+    inspecoes {
+        string _id PK
+        string licencaId FK
+        string userId FK
+        string data
+        string resultado
+        string fiscal
+        string observacoes
+    }
+
+    eventos {
+        string _id PK
+        string userId FK
+        string data
+        string titulo
+        string descricao
+        string tipo
+        string licencaId FK
+        string estabelecimentoId FK
+        boolean concluido
+    }
+```
+
+**Fonte:** Elaborado pelos autores (2026).
+
+---
+
+### Figura 7 – Distribuição de Status de Licenças (Cenários de Teste)
+
+Copie exatamente o bloco abaixo:
+
+```mermaid
 pie title Distribuição de Situação das Licenças (Cenários Simulados)
     "Ativas / Em Dia (Sem Risco)" : 60
     "Próximas do Vencimento (Atenção)" : 25
     "Vencidas / Irregulares (Crítico)" : 15
+```
+
+**Fonte:** Elaborado pelos autores (2026).
