@@ -9,52 +9,57 @@ Abaixo estão os diagramas separados, **prontos para copiar individualmente** (s
 Copie exatamente o bloco abaixo:
 
 ```mermaid
-flowchart TD
+flowchart LR
+    %% Estilos de cores padronizados
+    classDef cicd fill:#EDE7F6,stroke:#5E35B1,stroke-width:2px,color:#311B92;
+    classDef edge fill:#E1F5FE,stroke:#0288D1,stroke-width:2px,color:#01579B;
     classDef client fill:#E0F2F1,stroke:#00796B,stroke-width:2px,color:#004D40;
-    classDef edge fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1;
-    classDef backend fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#BF360C;
-    classDef cicd fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px,color:#4A148C;
+    classDef backend fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100;
 
-    subgraph CI_CD ["Esteira de Integração e Deploy Contínuo (CI/CD)"]
-        DEV["Desenvolvedor / Repositório Git"]
-        GHA["GitHub Actions Workflow<br/>(Lint, Testes Vitest & Build)"]
-        DEV --> GHA
+    %% 1. CI/CD
+    subgraph CI_CD ["1. Integração Contínua (CI/CD)"]
+        direction TB
+        DEV["Desenvolvedor<br/>(Repositório Git)"]
+        GHA["GitHub Actions<br/>(Testes Vitest & Build)"]
+        DEV -->|"git push"| GHA
     end
 
-    subgraph EDGE_LAYER ["Camada de Borda & Distribuição (Cloudflare)"]
-        CF_PAGES["Cloudflare Pages / CDN Global<br/>(Distribuição estática de alta disponibilidade)"]
-        SPA_ROUTING["Roteamento SPA & Cache Edge<br/>(Low Latency)"]
-        CF_PAGES --- SPA_ROUTING
+    %% 2. Edge / Hospedagem
+    subgraph EDGE ["2. Borda & Distribuição"]
+        direction TB
+        CF["Cloudflare Pages<br/>(CDN Global & Cache Edge)"]
+        SPA["Roteamento SPA<br/>(Baixa Latência)"]
+        CF --- SPA
     end
 
-    subgraph FRONTEND ["Camada Cliente / Frontend (SPA Web)"]
-        UI["Interface de Usuário (React / Next.js + Tailwind CSS)"]
-        ROUTER["Roteamento Client-Side (React Router)"]
-        STATE["Gerenciamento de Estado (Zustand)"]
-        CONVEX_CLIENT["Convex React Client / WebSocket"]
-        
-        UI <--> ROUTER
-        UI <--> STATE
-        UI <--> CONVEX_CLIENT
+    %% 3. Frontend
+    subgraph FRONTEND ["3. Camada Cliente (Frontend Web)"]
+        direction TB
+        UI["Interface do Usuário<br/>(React 19 + Tailwind CSS)"]
+        STORE["Estado & Rotas<br/>(Zustand + React Router)"]
+        SDK["Cliente Convex SDK<br/>(Reatividade Client-Side)"]
+        UI --- STORE --- SDK
     end
 
-    subgraph BACKEND ["Camada de Backend Serverless & Dados (Convex Cloud)"]
-        WS_GATEWAY["Gateway em Tempo Real (WebSocket / Subscriptions)"]
-        SERVERLESS_FN["Funções Serverless<br/>(Queries, Mutations & Validação de Acesso)"]
-        CONVEX_DB[("Banco de Dados Reativo Convex<br/>(Índices, Documentos & Tipagem TypeScript)")]
-        
-        WS_GATEWAY <--> SERVERLESS_FN
-        SERVERLESS_FN <--> CONVEX_DB
+    %% 4. Backend Serverless
+    subgraph BACKEND ["4. Backend Serverless (Convex Cloud)"]
+        direction TB
+        WS["Gateway WebSocket<br/>(Subscrições em Tempo Real)"]
+        FN["Funções Serverless<br/>(Queries & Mutations)"]
+        DB[("Banco de Dados Reativo<br/>(Documentos & Índices)")]
+        WS --- FN --- DB
     end
 
-    GHA --> CF_PAGES
-    CF_PAGES --> UI
-    CONVEX_CLIENT <--> WS_GATEWAY
+    %% Conexões entre camadas
+    GHA -->|"Deploy Automatizado"| CF
+    CF -->|"Entrega dos Assets"| UI
+    SDK <===>|"Sincronização em Tempo Real"| WS
 
-    class UI,ROUTER,STATE,CONVEX_CLIENT client;
-    class CF_PAGES,SPA_ROUTING edge;
-    class WS_GATEWAY,SERVERLESS_FN,CONVEX_DB backend;
+    %% Aplicação de classes
     class DEV,GHA cicd;
+    class CF,SPA edge;
+    class UI,STORE,SDK client;
+    class WS,FN,DB backend;
 ```
 
 **Fonte:** Elaborado pelos autores (2026).
