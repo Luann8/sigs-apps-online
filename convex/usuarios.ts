@@ -198,10 +198,15 @@ export const setEstabelecimentos = mutation({
     const removed = oldEstIds.filter((id) => !newEstIds.includes(id));
     for (const estId of removed) {
       try {
-        const est = await ctx.db.get(estId as any);
-        if (est && Array.isArray(est.usuariosIds)) {
-          const updated = est.usuariosIds.filter((uId) => uId !== userStrId);
-          await ctx.db.patch(est._id, { usuariosIds: updated });
+        const estDoc = await ctx.db.get(estId as any);
+        if (estDoc) {
+          const est = estDoc as any;
+          if (Array.isArray(est.usuariosIds)) {
+            const updated = (est.usuariosIds as string[]).filter(
+              (uId: string) => uId !== userStrId
+            );
+            await ctx.db.patch(est._id, { usuariosIds: updated } as any);
+          }
         }
       } catch {
         // ignora se ID não existir mais
@@ -212,11 +217,14 @@ export const setEstabelecimentos = mutation({
     const added = newEstIds.filter((id) => !oldEstIds.includes(id));
     for (const estId of added) {
       try {
-        const est = await ctx.db.get(estId as any);
-        if (est) {
-          const cur = est.usuariosIds || [];
+        const estDoc = await ctx.db.get(estId as any);
+        if (estDoc) {
+          const est = estDoc as any;
+          const cur: string[] = est.usuariosIds || [];
           if (!cur.includes(userStrId)) {
-            await ctx.db.patch(est._id, { usuariosIds: [...cur, userStrId] });
+            await ctx.db.patch(est._id, {
+              usuariosIds: [...cur, userStrId],
+            } as any);
           }
         }
       } catch {
