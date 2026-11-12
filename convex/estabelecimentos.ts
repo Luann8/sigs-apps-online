@@ -32,12 +32,14 @@ export const create = mutation({
     responsavel: v.string(),
     crmv: v.optional(v.string()),
     tipo: v.union(v.literal("veterinaria"), v.literal("sanitaria")),
+    usuariosIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const userId = await ctx.auth.getUserIdentity();
     return await ctx.db.insert("estabelecimentos", {
       ...args,
       userId: userId?.subject ?? "default_user",
+      usuariosIds: args.usuariosIds ?? [],
     });
   },
 });
@@ -52,12 +54,14 @@ export const add = mutation({
     responsavel: v.string(),
     crmv: v.optional(v.string()),
     tipo: v.union(v.literal("veterinaria"), v.literal("sanitaria")),
+    usuariosIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const userId = await ctx.auth.getUserIdentity();
     return await ctx.db.insert("estabelecimentos", {
       ...args,
       userId: userId?.subject ?? "default_user",
+      usuariosIds: args.usuariosIds ?? [],
     });
   },
 });
@@ -73,6 +77,7 @@ export const update = mutation({
     responsavel: v.optional(v.string()),
     crmv: v.optional(v.string()),
     tipo: v.optional(v.union(v.literal("veterinaria"), v.literal("sanitaria"))),
+    usuariosIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -80,6 +85,56 @@ export const update = mutation({
       Object.entries(updates).filter(([, v]) => v !== undefined)
     );
     await ctx.db.patch(id, cleaned);
+  },
+});
+
+export const setUsuarios = mutation({
+  args: {
+    estabelecimentoId: v.id("estabelecimentos"),
+    usuariosIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const est = await ctx.db.get(args.estabelecimentoId);
+    if (!est) throw new Error("Estabelecimento não encontrado");
+
+    const oldUserIds = est.usuariosIds || [];
+    const newUserIds = args.usuariosIds;
+
+    await ctx.db.patch(args.estabelecimentoId, {
+      usuariosIds: newUserIds,
+    });
+
+    const estStrId = String(args.estabelecimentoId);
+
+    // 1. Remove das contas que foram desmarcadas
+    const removed = oldUserIds.filter((uId) => !newUserIds.includes(uId));
+    for (const uId of removed) {
+      try {
+        const u = await ctx.db.get(uId as any);
+        if (u && Array.isArray(u.estabelecimentosIds)) {
+          const updated = u.estabelecimentosIds.filter((eId) => eId !== estStrId);
+          await ctx.db.patch(u._id, { estabelecimentosIds: updated });
+        }
+      } catch {
+        // ignora se ID não existir
+      }
+    }
+
+    // 2. Adiciona nas contas recém-marcadas
+    const added = newUserIds.filter((uId) => !oldUserIds.includes(uId));
+    for (const uId of added) {
+      try {
+        const u = await ctx.db.get(uId as any);
+        if (u) {
+          const cur = u.estabelecimentosIds || [];
+          if (!cur.includes(estStrId)) {
+            await ctx.db.patch(u._id, { estabelecimentosIds: [...cur, estStrId] });
+          }
+        }
+      } catch {
+        // ignora se ID não existir
+      }
+    }
   },
 });
 

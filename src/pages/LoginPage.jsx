@@ -110,14 +110,16 @@ export function LoginPage() {
         }
       }
 
+      const isRootAdmin = cleanEmail === 'fiscal@sigs.gov.br';
       const sessionUser = newUser || {
         id: 'usr_' + Date.now(),
         name: cleanNome,
         email: cleanEmail,
         role: 'Fiscal Sanitário',
         avatar: avatarUrl,
-        podeLerTodos: true,
-        podeEditar: true,
+        podeLerTodos: isRootAdmin,
+        podeEditar: isRootAdmin,
+        estabelecimentosIds: [],
         status: 'aprovado',
         ativo: true,
       };

@@ -5,9 +5,14 @@ import { api } from '../../../convex/_generated/api';
 import { useEstabelecimentosStore } from '../../store/estabelecimentosStore';
 import { formatCNPJ, maskTelefone } from '../../utils/formatters';
 import { toast } from 'sonner';
+import { useAuthStore } from '../../store/authStore';
+import { filterEstabelecimentosForUser } from '../../utils/userAccess';
 
 export function EstablishmentPickerModal({ isOpen, onClose }) {
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const { user } = useAuthStore();
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const estabelecimentos = filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
   const { estabelecimentoAtual, setEstabelecimentoAtual } = useEstabelecimentosStore();
 
   const addMutation = useMutation(api.estabelecimentos.add);

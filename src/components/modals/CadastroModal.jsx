@@ -3,11 +3,16 @@ import { X, FileText, CheckCircle, HardDrive, Link, ExternalLink } from 'lucide-
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useEstabelecimentosStore } from '../../store/estabelecimentosStore';
+import { useAuthStore } from '../../store/authStore';
+import { filterEstabelecimentosForUser } from '../../utils/userAccess';
 import { TIPOS_LICENCA, generateCodigo } from '../../utils/formatters';
 import { toast } from 'sonner';
 
 export function CadastroModal({ isOpen, onClose, editLicenca = null }) {
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const { user } = useAuthStore();
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : 'skip');
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const estabelecimentos = filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
   const licencas = useQuery(api.licencas.listAll) ?? [];
   const { estabelecimentoAtual } = useEstabelecimentosStore();
 

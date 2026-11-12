@@ -20,14 +20,17 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
 import sigsLogo from '../../../assets/favicon.png';
+import { filterEstabelecimentosForUser, filterLicencasForUser } from '../../utils/userAccess';
 
 // ─── Mobile Drawer — contém tudo que estava no header + sidebar ────────────
 function MobileDrawer({ open, onClose, alertCount, onOpenCadastro, onOpenEstPicker }) {
   const navigate       = useNavigate();
   const { user, logout } = useAuthStore();
+  const liveUser       = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
   const { isDark }     = useTheme();
   const setTheme       = useSettingsStore((s) => s.setTheme);
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const estabelecimentos = filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
   const { estabelecimentoAtual } = useEstabelecimentosStore();
   const selectedEst = estabelecimentos.find((e) => e._id === estabelecimentoAtual) || estabelecimentos[0];
 
@@ -181,14 +184,18 @@ export function AppLayout() {
   const [cadastroOpen,  setCadastroOpen]  = useState(false);
   const [estPickerOpen, setEstPickerOpen] = useState(false);
 
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const rawLicencas = useQuery(api.licencas.listAll) ?? [];
 
   const alertCount = useMemo(() => {
-    return rawLicencas.filter((l) => {
+    const allowedEsts = filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
+    const allowedLics = filterLicencasForUser(rawLicencas, allowedEsts, user, liveUser);
+    return allowedLics.filter((l) => {
       const r = calcularRisco(l);
       return r.cor === 'vermelho' || r.cor === 'laranja';
     }).length;
-  }, [rawLicencas]);
+  }, [rawLicencas, rawEstabelecimentos, user, liveUser]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100">

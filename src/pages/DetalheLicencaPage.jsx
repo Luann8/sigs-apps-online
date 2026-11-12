@@ -32,10 +32,14 @@ import {
 import { InspecaoModal } from '../components/modals/InspecaoModal';
 import { CalendarSyncModal } from '../components/modals/CalendarSyncModal';
 import { toast } from 'sonner';
+import { useAuthStore } from '../store/authStore';
+import { filterEstabelecimentosForUser, canAccessAll } from '../utils/userAccess';
 
 export function DetalheLicencaPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : 'skip');
 
   const licencas = useQuery(api.licencas.listAll) ?? [];
   const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
@@ -45,16 +49,23 @@ export function DetalheLicencaPage() {
   const [inspecaoModalOpen, setInspecaoModalOpen] = useState(false);
   const [calendarSyncOpen, setCalendarSyncOpen] = useState(false);
 
+  const allowedEsts = filterEstabelecimentosForUser(estabelecimentos, user, liveUser);
   const licenca = licencas.find((l) => l._id === id);
   const estabelecimento = estabelecimentos.find((e) => e._id === licenca?.estabelecimentoId);
 
-  if (!licenca) {
+  const isAllowed =
+    licenca &&
+    (canAccessAll(liveUser || user) || allowedEsts.some((e) => e._id === licenca.estabelecimentoId));
+
+  if (!licenca || !isAllowed) {
     return (
       <div className="py-12 text-center text-gray-500 space-y-4">
-        <p className="font-semibold text-lg">Licença não encontrada.</p>
+        <p className="font-semibold text-lg">
+          {!licenca ? 'Licença não encontrada.' : 'Acesso restrito: você não tem permissão para visualizar esta licença.'}
+        </p>
         <button
           onClick={() => navigate('/licencas')}
-          className="px-4 py-2 bg-[#00796B] text-white rounded-xl font-bold"
+          className="px-4 py-2 bg-[#00796B] text-white rounded-xl font-bold cursor-pointer"
         >
           Voltar para Licenças
         </button>

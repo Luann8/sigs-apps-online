@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuthStore } from '../store/authStore';
+import { filterEstabelecimentosForUser, filterLicencasForUser } from '../utils/userAccess';
 
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -34,8 +36,10 @@ const MONTH_NAMES = [
 
 export function CalendarioPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
   const rawLicencas = useQuery(api.licencas.listAll) ?? [];
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const dbEventos = useQuery(api.eventos.listAll) ?? [];
 
   const addEventoMutation = useMutation(api.eventos.add);
@@ -43,6 +47,14 @@ export function CalendarioPage() {
   const removeEventoMutation = useMutation(api.eventos.remove);
 
   const { estabelecimentoAtual } = useEstabelecimentosStore();
+
+  const estabelecimentos = useMemo(() => {
+    return filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
+  }, [rawEstabelecimentos, user, liveUser]);
+
+  const allowedLicencas = useMemo(() => {
+    return filterLicencasForUser(rawLicencas, estabelecimentos, user, liveUser);
+  }, [rawLicencas, estabelecimentos, user, liveUser]);
 
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
@@ -65,9 +77,9 @@ export function CalendarioPage() {
   }, [estabelecimentos]);
 
   const filteredLicencas = useMemo(() => {
-    if (!estabelecimentoAtual) return rawLicencas;
-    return rawLicencas.filter((l) => l.estabelecimentoId === estabelecimentoAtual);
-  }, [rawLicencas, estabelecimentoAtual]);
+    if (!estabelecimentoAtual) return allowedLicencas;
+    return allowedLicencas.filter((l) => l.estabelecimentoId === estabelecimentoAtual);
+  }, [allowedLicencas, estabelecimentoAtual]);
 
   // Build dateMap: date -> { licencas[], eventos[] }
   const dateMap = useMemo(() => {

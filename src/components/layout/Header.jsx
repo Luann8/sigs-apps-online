@@ -6,12 +6,16 @@ import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { filterEstabelecimentosForUser } from '../../utils/userAccess';
 
 export function Header({ alertCount = 0, onOpenMobileMenu, onOpenEstablishmentPicker, onOpenCadastro }) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const { estabelecimentoAtual } = useEstabelecimentosStore();
+
+  const estabelecimentos = filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 

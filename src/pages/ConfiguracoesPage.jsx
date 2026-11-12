@@ -29,6 +29,7 @@ import {
   Clock,
   Phone,
   Building,
+  Building2,
   AlertCircle,
   UserCheck,
   Eye,
@@ -36,6 +37,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { VinculoModal } from '../components/modals/VinculoModal';
 
 export function ConfiguracoesPage() {
   const navigate = useNavigate();
@@ -113,6 +115,8 @@ export function ConfiguracoesPage() {
 
   // New access modal state
   const [novoAcessoOpen, setNovoAcessoOpen] = useState(false);
+  const [vinculoOpen, setVinculoOpen] = useState(false);
+  const [vinculoTarget, setVinculoTarget] = useState(null);
   const [newNome, setNewNome] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState('Fiscal Sanitário');
@@ -701,6 +705,21 @@ export function ConfiguracoesPage() {
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    {/* Botão Vincular Clínicas */}
+                    <button
+                      onClick={() => {
+                        setVinculoTarget(u);
+                        setVinculoOpen(true);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center space-x-1.5 border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                      title="Vincular clínicas a este usuário"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">
+                        Clínicas ({u.estabelecimentosIds?.length || 0})
+                      </span>
+                    </button>
+
                     {/* Toggle Permissão de Leitura Global de Dados Externos */}
                     <button
                       onClick={() =>
@@ -966,6 +985,18 @@ export function ConfiguracoesPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {vinculoOpen && vinculoTarget && (
+        <VinculoModal
+          isOpen={vinculoOpen}
+          onClose={() => {
+            setVinculoOpen(false);
+            setVinculoTarget(null);
+          }}
+          modo="usuario"
+          target={vinculoTarget}
+        />
       )}
     </div>
   );

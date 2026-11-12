@@ -23,6 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { CalendarSyncModal } from '../components/modals/CalendarSyncModal';
+import { filterEstabelecimentosForUser, filterLicencasForUser } from '../utils/userAccess';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const RISK_META = {
@@ -102,8 +103,9 @@ function RiskRow({ lic, onSync, navigate }) {
 export function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const rawLicencas    = useQuery(api.licencas.listAll)    ?? [];
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
+  const rawLicencas = useQuery(api.licencas.listAll) ?? [];
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const { estabelecimentoAtual } = useEstabelecimentosStore();
 
   const [syncModalOpen, setSyncModalOpen] = useState(false);
@@ -112,6 +114,14 @@ export function DashboardPage() {
 
   const isRestrito = user && !user.podeLerTodos && user.role !== 'Administrador' && user.email !== 'fiscal@sigs.gov.br';
 
+  const estabelecimentos = useMemo(() => {
+    return filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
+  }, [rawEstabelecimentos, user, liveUser]);
+
+  const allowedLicencas = useMemo(() => {
+    return filterLicencasForUser(rawLicencas, estabelecimentos, user, liveUser);
+  }, [rawLicencas, estabelecimentos, user, liveUser]);
+
   const estMap = useMemo(() => {
     const map = new Map();
     (estabelecimentos || []).forEach((e) => { if (e?._id) map.set(e._id, e); });
@@ -119,10 +129,10 @@ export function DashboardPage() {
   }, [estabelecimentos]);
 
   const filteredLicencas = useMemo(() => {
-    if (!rawLicencas) return [];
-    if (!estabelecimentoAtual) return rawLicencas;
-    return rawLicencas.filter((l) => l && l.estabelecimentoId === estabelecimentoAtual);
-  }, [rawLicencas, estabelecimentoAtual]);
+    if (!allowedLicencas) return [];
+    if (!estabelecimentoAtual) return allowedLicencas;
+    return allowedLicencas.filter((l) => l && l.estabelecimentoId === estabelecimentoAtual);
+  }, [allowedLicencas, estabelecimentoAtual]);
 
   const stats = useMemo(() => {
     let semRisco = 0, atencao = 0, critico = 0;
@@ -326,7 +336,15 @@ export function DashboardPage() {
           </div>
 
           <div className="p-4 space-y-2">
-            {urgentLicencas.length === 0 ? (
+            {estabelecimentos.length === 0 ? (
+              <div className="py-14 text-center px-4">
+                <Building2 className="w-14 h-14 mx-auto mb-3 text-gray-300 dark:text-zinc-600" />
+                <p className="font-bold text-gray-700 dark:text-zinc-200">Nenhum estabelecimento vinculado</p>
+                <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1 max-w-sm mx-auto">
+                  Sua conta foi criada com sucesso. Solicite a um administrador o vínculo à sua clínica ou unidade sanitária para visualizar os dados.
+                </p>
+              </div>
+            ) : urgentLicencas.length === 0 ? (
               <div className="py-14 text-center">
                 <ShieldCheck className="w-14 h-14 mx-auto mb-3 text-emerald-500 opacity-70" />
                 <p className="font-bold text-gray-700 dark:text-zinc-200">Tudo em conformidade!</p>

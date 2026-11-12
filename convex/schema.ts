@@ -12,6 +12,7 @@ export default defineSchema({
     crmv: v.optional(v.string()),
     tipo: v.union(v.literal("veterinaria"), v.literal("sanitaria")),
     userId: v.string(),
+    usuariosIds: v.optional(v.array(v.string())),
   }).index("by_user", ["userId"]),
 
   licencas: defineTable({
@@ -81,5 +82,6 @@ export default defineSchema({
     podeLerTodos: v.optional(v.boolean()),
     podeEditar: v.optional(v.boolean()),
     solicitouLeitura: v.optional(v.boolean()),
+    estabelecimentosIds: v.optional(v.array(v.string())),
   }).index("by_email", ["email"]),
 });

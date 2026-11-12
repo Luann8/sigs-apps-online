@@ -59,6 +59,7 @@ export const authenticate = mutation({
         status: "aprovado",
         podeLerTodos: true,
         podeEditar: true,
+        estabelecimentosIds: [],
         criadoEm: new Date().toISOString(),
       });
       user = await ctx.db.get(id);
@@ -72,6 +73,8 @@ export const authenticate = mutation({
       throw new Error("Senha incorreta.");
     }
 
+    const isAdmin = user.role === "Administrador" || user.email === "fiscal@sigs.gov.br";
+
     return {
       id: user._id,
       name: user.nome,
@@ -82,8 +85,9 @@ export const authenticate = mutation({
       orgaoSetor: user.orgaoSetor,
       status: user.status || "aprovado",
       ativo: user.ativo ?? true,
-      podeLerTodos: user.podeLerTodos ?? (user.role === "Administrador" || user.email === "fiscal@sigs.gov.br"),
-      podeEditar: user.podeEditar ?? (user.role === "Administrador" || user.email === "fiscal@sigs.gov.br"),
+      podeLerTodos: user.podeLerTodos !== undefined ? user.podeLerTodos : isAdmin,
+      podeEditar: user.podeEditar ?? isAdmin,
+      estabelecimentosIds: user.estabelecimentosIds || [],
     };
   },
 });
@@ -109,6 +113,8 @@ export const register = mutation({
       throw new Error("Já existe uma conta com este e-mail. Faça o login.");
     }
 
+    const isAdmin = emailNorm === "fiscal@sigs.gov.br" || args.role === "Administrador";
+
     const id = await ctx.db.insert("usuarios", {
       nome: args.nome.trim(),
       email: emailNorm,
@@ -119,8 +125,9 @@ export const register = mutation({
       avatar: args.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(args.nome)}&background=00796B&color=fff`,
       ativo: true,
       status: "aprovado",
-      podeLerTodos: true,
-      podeEditar: true,
+      podeLerTodos: isAdmin ? true : false,
+      podeEditar: isAdmin ? true : false,
+      estabelecimentosIds: [],
       criadoEm: new Date().toISOString(),
     });
 
@@ -131,8 +138,9 @@ export const register = mutation({
       email: created!.email,
       role: created!.role,
       avatar: created!.avatar,
-      podeLerTodos: true,
-      podeEditar: true,
+      podeLerTodos: isAdmin ? true : false,
+      podeEditar: isAdmin ? true : false,
+      estabelecimentosIds: [],
       ativo: true,
       status: "aprovado",
     };
@@ -156,6 +164,7 @@ export const update = mutation({
     status: v.optional(v.union(v.literal("pendente"), v.literal("aprovado"), v.literal("bloqueado"))),
     telefone: v.optional(v.string()),
     orgaoSetor: v.optional(v.string()),
+    estabelecimentosIds: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -163,6 +172,57 @@ export const update = mutation({
       Object.entries(updates).filter(([, v]) => v !== undefined)
     );
     await ctx.db.patch(id, cleaned);
+  },
+});
+
+export const setEstabelecimentos = mutation({
+  args: {
+    usuarioId: v.id("usuarios"),
+    estabelecimentosIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.usuarioId);
+    if (!user) throw new Error("Usuário não encontrado");
+
+    const oldEstIds = user.estabelecimentosIds || [];
+    const newEstIds = args.estabelecimentosIds;
+
+    // Atualiza a lista de clínicas no usuário
+    await ctx.db.patch(args.usuarioId, {
+      estabelecimentosIds: newEstIds,
+    });
+
+    const userStrId = String(args.usuarioId);
+
+    // 1. Remove o usuário dos estabelecimentos desmarcados
+    const removed = oldEstIds.filter((id) => !newEstIds.includes(id));
+    for (const estId of removed) {
+      try {
+        const est = await ctx.db.get(estId as any);
+        if (est && Array.isArray(est.usuariosIds)) {
+          const updated = est.usuariosIds.filter((uId) => uId !== userStrId);
+          await ctx.db.patch(est._id, { usuariosIds: updated });
+        }
+      } catch {
+        // ignora se ID não existir mais
+      }
+    }
+
+    // 2. Adiciona o usuário aos estabelecimentos recém-marcados
+    const added = newEstIds.filter((id) => !oldEstIds.includes(id));
+    for (const estId of added) {
+      try {
+        const est = await ctx.db.get(estId as any);
+        if (est) {
+          const cur = est.usuariosIds || [];
+          if (!cur.includes(userStrId)) {
+            await ctx.db.patch(est._id, { usuariosIds: [...cur, userStrId] });
+          }
+        }
+      } catch {
+        // ignora se ID não for encontrado
+      }
+    }
   },
 });
 

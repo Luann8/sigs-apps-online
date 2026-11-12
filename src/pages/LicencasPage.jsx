@@ -30,14 +30,24 @@ import { CalendarSyncModal } from '../components/modals/CalendarSyncModal';
 import { downloadCSV } from '../utils/backupHelper';
 import { useAuthStore } from '../store/authStore';
 import { toast } from 'sonner';
+import { filterEstabelecimentosForUser, filterLicencasForUser } from '../utils/userAccess';
 
 export function LicencasPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
   const rawLicencas = useQuery(api.licencas.listAll) ?? [];
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const removeMutation = useMutation(api.licencas.remove);
   const { estabelecimentoAtual } = useEstabelecimentosStore();
+
+  const estabelecimentos = useMemo(() => {
+    return filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
+  }, [rawEstabelecimentos, user, liveUser]);
+
+  const allowedLicencas = useMemo(() => {
+    return filterLicencasForUser(rawLicencas, estabelecimentos, user, liveUser);
+  }, [rawLicencas, estabelecimentos, user, liveUser]);
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('todas');
@@ -53,7 +63,7 @@ export function LicencasPage() {
   }, [estabelecimentos]);
 
   const filteredLicencas = useMemo(() => {
-    return rawLicencas.filter((l) => {
+    return allowedLicencas.filter((l) => {
       if (estabelecimentoAtual && l.estabelecimentoId !== estabelecimentoAtual) {
         return false;
       }
@@ -208,7 +218,16 @@ export function LicencasPage() {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-gray-400 dark:text-zinc-500">
                     <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                    <p className="font-semibold">Nenhuma licença encontrada.</p>
+                    <p className="font-semibold">
+                      {estabelecimentos.length === 0
+                        ? 'Nenhuma clínica vinculada ao seu usuário.'
+                        : 'Nenhuma licença encontrada.'}
+                    </p>
+                    {estabelecimentos.length === 0 && (
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+                        Aguarde um administrador associar sua conta a um estabelecimento para visualizar licenças.
+                      </p>
+                    )}
                   </td>
                 </tr>
               ) : (

@@ -22,13 +22,25 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuthStore } from '../store/authStore';
+import { filterEstabelecimentosForUser, filterLicencasForUser } from '../utils/userAccess';
 
 export function AlertasPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
   const rawLicencas = useQuery(api.licencas.listAll) ?? [];
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
 
   const [filterDays, setFilterDays] = useState(30);
+
+  const estabelecimentos = useMemo(() => {
+    return filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
+  }, [rawEstabelecimentos, user, liveUser]);
+
+  const allowedLicencas = useMemo(() => {
+    return filterLicencasForUser(rawLicencas, estabelecimentos, user, liveUser);
+  }, [rawLicencas, estabelecimentos, user, liveUser]);
 
   const estMap = useMemo(() => {
     const m = new Map();
@@ -37,11 +49,11 @@ export function AlertasPage() {
   }, [estabelecimentos]);
 
   const alertas = useMemo(() => {
-    return rawLicencas
+    return allowedLicencas
       .map((l) => ({ ...l, days: getDaysUntilExpiry(l.dataVencimento) }))
       .filter((l) => l.days <= filterDays)
       .sort((a, b) => a.days - b.days);
-  }, [rawLicencas, filterDays]);
+  }, [allowedLicencas, filterDays]);
 
   const vencidas = alertas.filter((l) => l.days < 0);
   const vencendo = alertas.filter((l) => l.days >= 0);

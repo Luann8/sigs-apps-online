@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { formatCNPJ, maskTelefone } from '../utils/formatters';
@@ -12,19 +12,30 @@ import {
   Mail,
   MapPin,
   User,
+  Users,
   ShieldCheck,
 } from 'lucide-react';
 import { EstablishmentPickerModal } from '../components/modals/EstablishmentPickerModal';
+import { VinculoModal } from '../components/modals/VinculoModal';
 import { useAuthStore } from '../store/authStore';
 import { toast } from 'sonner';
+import { filterEstabelecimentosForUser, canAccessAll } from '../utils/userAccess';
 
 export function EstabelecimentosPage() {
   const { user } = useAuthStore();
-  const estabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
+  const liveUser = useQuery(api.usuarios.getByEmail, user?.email ? { email: user.email } : "skip");
+  const rawEstabelecimentos = useQuery(api.estabelecimentos.list) ?? [];
   const removeMutation = useMutation(api.estabelecimentos.remove);
+
+  const isAdmin = canAccessAll(liveUser || user);
+  const estabelecimentos = useMemo(() => {
+    return filterEstabelecimentosForUser(rawEstabelecimentos, user, liveUser);
+  }, [rawEstabelecimentos, user, liveUser]);
 
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [vinculoOpen, setVinculoOpen] = useState(false);
+  const [vinculoTarget, setVinculoTarget] = useState(null);
 
   const filtered = estabelecimentos.filter((e) => {
     const query = search.toLowerCase();
@@ -139,20 +150,64 @@ export function EstabelecimentosPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-end space-x-2">
-              <button
-                onClick={() => handleDelete(est._id, est.nome)}
-                className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                title="Remover"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+            <div className="pt-3 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
+              {isAdmin ? (
+                <button
+                  onClick={() => {
+                    setVinculoTarget(est);
+                    setVinculoOpen(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                  title="Vincular usuários a este estabelecimento"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Usuários ({est.usuariosIds?.length || 0})</span>
+                </button>
+              ) : (
+                <span className="text-[11px] text-gray-400 dark:text-zinc-500 font-medium">
+                  {est.usuariosIds?.length || 0} usuário(s) vinculado(s)
+                </span>
+              )}
+
+              {isAdmin && (
+                <button
+                  onClick={() => handleDelete(est._id, est.nome)}
+                  className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                  title="Remover"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
 
+      {filtered.length === 0 && (
+        <div className="py-16 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-8">
+          <Building2 className="w-12 h-12 text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+          <h3 className="font-bold text-gray-800 dark:text-zinc-200 text-base">Nenhum estabelecimento encontrado</h3>
+          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1 max-w-md mx-auto">
+            {estabelecimentos.length === 0
+              ? 'Sua conta ainda não possui estabelecimentos vinculados. Aguarde um administrador associar sua conta a uma clínica.'
+              : 'Tente ajustar os termos da sua busca.'}
+          </p>
+        </div>
+      )}
+
       {modalOpen && <EstablishmentPickerModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />}
+
+      {vinculoOpen && vinculoTarget && (
+        <VinculoModal
+          isOpen={vinculoOpen}
+          onClose={() => {
+            setVinculoOpen(false);
+            setVinculoTarget(null);
+          }}
+          modo="estabelecimento"
+          target={vinculoTarget}
+        />
+      )}
     </div>
   );
 }
