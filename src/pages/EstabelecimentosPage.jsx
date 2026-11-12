@@ -103,11 +103,10 @@ export function EstabelecimentosPage() {
                   <Building2 className="w-6 h-6" />
                 </div>
                 <span
-                  className={`text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-lg ${
-                    est.tipo === 'sanitaria'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                      : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-                  }`}
+                  className={`text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-lg ${est.tipo === 'sanitaria'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                    : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                    }`}
                 >
                   {est.tipo}
                 </span>

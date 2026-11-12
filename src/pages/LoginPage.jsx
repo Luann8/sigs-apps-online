@@ -160,22 +160,20 @@ export function LoginPage() {
           <div className="flex border-b border-gray-100 dark:border-zinc-800">
             <button
               onClick={() => setActiveTab('login')}
-              className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all flex items-center justify-center space-x-2 ${
-                activeTab === 'login'
-                  ? 'border-[#00796B] text-[#00796B] dark:text-teal-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-600 dark:text-zinc-500'
-              }`}
+              className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all flex items-center justify-center space-x-2 ${activeTab === 'login'
+                ? 'border-[#00796B] text-[#00796B] dark:text-teal-400'
+                : 'border-transparent text-gray-400 hover:text-gray-600 dark:text-zinc-500'
+                }`}
             >
               <LogIn className="w-4 h-4" />
               <span>Entrar</span>
             </button>
             <button
               onClick={() => setActiveTab('register')}
-              className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all flex items-center justify-center space-x-2 ${
-                activeTab === 'register'
-                  ? 'border-[#00796B] text-[#00796B] dark:text-teal-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-600 dark:text-zinc-500'
-              }`}
+              className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all flex items-center justify-center space-x-2 ${activeTab === 'register'
+                ? 'border-[#00796B] text-[#00796B] dark:text-teal-400'
+                : 'border-transparent text-gray-400 hover:text-gray-600 dark:text-zinc-500'
+                }`}
             >
               <UserPlus className="w-4 h-4" />
               <span>Cadastrar</span>
@@ -334,3 +332,5 @@ export function LoginPage() {
     </div>
   );
 }
+;
+

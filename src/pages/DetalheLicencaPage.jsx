@@ -130,11 +130,10 @@ export function DetalheLicencaPage() {
                 href={licenca.anexoUri}
                 target="_blank"
                 rel="noreferrer"
-                className={`flex items-center space-x-2 px-4 py-2 font-semibold rounded-xl text-sm transition-colors ${
-                  isGoogleDrive
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 hover:bg-blue-100'
-                    : 'bg-teal-50 text-[#00796B] dark:bg-teal-950 dark:text-teal-300 hover:bg-teal-100'
-                }`}
+                className={`flex items-center space-x-2 px-4 py-2 font-semibold rounded-xl text-sm transition-colors ${isGoogleDrive
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 hover:bg-blue-100'
+                  : 'bg-teal-50 text-[#00796B] dark:bg-teal-950 dark:text-teal-300 hover:bg-teal-100'
+                  }`}
               >
                 {isGoogleDrive ? <HardDrive className="w-4 h-4 text-blue-600" /> : <ExternalLink className="w-4 h-4" />}
                 <span>{isGoogleDrive ? 'Abrir no Google Drive' : 'Visualizar Anexo'}</span>

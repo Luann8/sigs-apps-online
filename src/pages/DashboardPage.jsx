@@ -27,18 +27,18 @@ import { filterEstabelecimentosForUser, filterLicencasForUser } from '../utils/u
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const RISK_META = {
-  vermelho: { label: 'Crítico',   icon: Siren,          gradient: 'from-rose-600 to-rose-500',   ring: 'ring-rose-500/30',   bg: 'bg-rose-50 dark:bg-rose-950/40',   text: 'text-rose-700 dark:text-rose-300',   border: 'border-rose-200 dark:border-rose-900/60' },
-  laranja:  { label: 'Irregular', icon: OctagonAlert,   gradient: 'from-orange-500 to-amber-500', ring: 'ring-orange-500/30', bg: 'bg-orange-50 dark:bg-orange-950/40', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-900/60' },
-  amarelo:  { label: 'Atenção',   icon: AlertTriangle,  gradient: 'from-amber-500 to-yellow-400', ring: 'ring-amber-500/30',  bg: 'bg-amber-50 dark:bg-amber-950/40',  text: 'text-amber-700 dark:text-amber-300',  border: 'border-amber-200 dark:border-amber-900/60' },
+  vermelho: { label: 'Crítico', icon: Siren, gradient: 'from-rose-600 to-rose-500', ring: 'ring-rose-500/30', bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-900/60' },
+  laranja: { label: 'Irregular', icon: OctagonAlert, gradient: 'from-orange-500 to-amber-500', ring: 'ring-orange-500/30', bg: 'bg-orange-50 dark:bg-orange-950/40', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-900/60' },
+  amarelo: { label: 'Atenção', icon: AlertTriangle, gradient: 'from-amber-500 to-yellow-400', ring: 'ring-amber-500/30', bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-900/60' },
 };
 
 function RiskRow({ lic, onSync, navigate }) {
-  const est    = lic._est;
+  const est = lic._est;
   const config = getTipoLicencaConfig(lic.tipoLicenca);
-  const risco  = lic.risco;
-  const cls    = COR_CLASSES[risco.cor];
-  const meta   = RISK_META[risco.cor];
-  const Icon   = meta?.icon ?? AlertTriangle;
+  const risco = lic.risco;
+  const cls = COR_CLASSES[risco.cor];
+  const meta = RISK_META[risco.cor];
+  const Icon = meta?.icon ?? AlertTriangle;
 
   return (
     <div
@@ -139,12 +139,12 @@ export function DashboardPage() {
     (filteredLicencas || []).forEach((l) => {
       if (!l) return;
       const r = calcularRisco(l);
-      if (r.grupo === 'semRisco')   semRisco++;
+      if (r.grupo === 'semRisco') semRisco++;
       else if (r.grupo === 'atencao') atencao++;
-      else                            critico++;
+      else critico++;
     });
     const total = (filteredLicencas || []).length;
-    const pct   = total > 0 ? Math.round((semRisco / total) * 100) : 100;
+    const pct = total > 0 ? Math.round((semRisco / total) * 100) : 100;
     return { total, semRisco, atencao, critico, pct };
   }, [filteredLicencas]);
 
@@ -153,9 +153,9 @@ export function DashboardPage() {
       .filter((l) => l)
       .map((l) => ({
         ...l,
-        _est:  estMap.get(l.estabelecimentoId),
+        _est: estMap.get(l.estabelecimentoId),
         risco: calcularRisco(l),
-        days:  l.dataVencimento ? getDaysUntilExpiry(l.dataVencimento) : null,
+        days: l.dataVencimento ? getDaysUntilExpiry(l.dataVencimento) : null,
       }))
       .filter((l) => l.risco.cor !== 'verde' && l.risco.cor !== 'cinza')
       .sort((a, b) => {
@@ -236,9 +236,9 @@ export function DashboardPage() {
           {/* mini KPI row inside banner */}
           <div className="flex gap-4 flex-wrap">
             {[
-              { label: 'Crítico',   value: stats.critico,  color: 'bg-rose-400/80'   },
-              { label: 'Atenção',   value: stats.atencao,  color: 'bg-amber-400/80'  },
-              { label: 'Sem risco', value: stats.semRisco, color: 'bg-emerald-400/80'},
+              { label: 'Crítico', value: stats.critico, color: 'bg-rose-400/80' },
+              { label: 'Atenção', value: stats.atencao, color: 'bg-amber-400/80' },
+              { label: 'Sem risco', value: stats.semRisco, color: 'bg-emerald-400/80' },
             ].map(({ label, value, color }) => (
               <div key={label} className="flex items-center gap-2.5 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5">
                 <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
@@ -293,11 +293,10 @@ export function DashboardPage() {
         </div>
 
         {/* Crítico */}
-        <div className={`p-5 rounded-2xl border shadow-xs flex items-center justify-between ${
-          stats.critico > 0
-            ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60'
-            : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800'
-        }`}>
+        <div className={`p-5 rounded-2xl border shadow-xs flex items-center justify-between ${stats.critico > 0
+          ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60'
+          : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800'
+          }`}>
           <div>
             <p className={`text-[10px] font-bold uppercase tracking-wider ${stats.critico > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400 dark:text-zinc-500'}`}>Crítico</p>
             <h3 className={`text-3xl font-black mt-0.5 ${stats.critico > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-gray-900 dark:text-white'}`}>{stats.critico}</h3>
@@ -416,9 +415,8 @@ export function DashboardPage() {
                     className="group p-3.5 rounded-xl border border-gray-100 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 hover:bg-gray-50/80 dark:hover:bg-zinc-800/60 cursor-pointer transition-all flex items-center gap-3"
                   >
                     {/* status dot */}
-                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                      temCritico ? 'bg-rose-500' : temAtencao ? 'bg-amber-500' : 'bg-emerald-500'
-                    }`} />
+                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${temCritico ? 'bg-rose-500' : temAtencao ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`} />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate group-hover:text-[#00796B] dark:group-hover:text-teal-400 transition-colors">
                         {est.nome}
@@ -428,11 +426,10 @@ export function DashboardPage() {
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-[10px] font-bold ${
-                        temCritico ? 'text-rose-600 dark:text-rose-400'
+                      <p className={`text-[10px] font-bold ${temCritico ? 'text-rose-600 dark:text-rose-400'
                         : temAtencao ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-emerald-600 dark:text-emerald-400'
-                      }`}>
+                          : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>
                         {temCritico ? 'Crítico' : temAtencao ? 'Atenção' : 'Regular'}
                       </p>
                       <p className="text-[11px] text-gray-400 dark:text-zinc-500">{lics.length} doc.</p>
@@ -448,8 +445,8 @@ export function DashboardPage() {
             <div className="p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/50 space-y-1.5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 mb-2">Legenda de risco</p>
               {[
-                { color: 'bg-rose-500',    label: 'Crítico — risco de interdição' },
-                { color: 'bg-amber-500',   label: 'Atenção — a vencer / protocolado' },
+                { color: 'bg-rose-500', label: 'Crítico — risco de interdição' },
+                { color: 'bg-amber-500', label: 'Atenção — a vencer / protocolado' },
                 { color: 'bg-emerald-500', label: 'Regular — todos em conformidade' },
               ].map(({ color, label }) => (
                 <div key={label} className="flex items-center gap-2">
