@@ -37,6 +37,16 @@ jobs:
         run: |
           cp dist/index.html dist/404.html
 
+      - name: Add wrangler config for Cloudflare Pages
+        run: |
+          cat > dist/wrangler.json << 'EOF'
+          {
+            "name": "sigs-app",
+            "compatibility_date": "2024-09-23",
+            "pages_build_output_dir": "."
+          }
+          EOF
+
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
